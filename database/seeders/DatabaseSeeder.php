@@ -3,6 +3,7 @@
 namespace Database\Seeders;
 
 use App\Models\User;
+use App\Models\Worlds\World;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 
@@ -15,11 +16,17 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        // User::factory(10)->create();
+        $user = User::updateOrCreate(
+            ['email' => 'test@test.test'],
+            [
+                'name' => 'Test User',
+                'password' => 'test',
+            ]
+        );
 
-        User::factory()->create([
-            'name' => 'Test User',
-            'email' => 'test@example.com',
-        ]);
+        World::updateOrCreate(
+            ['user_id' => $user->id, 'name' => 'Пример мира'],
+            ['annotation' => 'Описание мира для примера. Здесь может быть краткая аннотация проекта.']
+        );
     }
 }

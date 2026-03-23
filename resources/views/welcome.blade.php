@@ -273,5 +273,8 @@
         @if (Route::has('login'))
             <div class="h-14.5 hidden lg:block"></div>
         @endif
+        <footer class="py-4 text-center text-sm text-base-content/50 dark:text-[#A1A09A]">
+            &copy; GENEFIS MEDIA, {{ date('Y') }}
+        </footer>
     </body>
 </html>

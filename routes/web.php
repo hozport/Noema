@@ -1,7 +1,30 @@
 <?php
 
+use App\Http\Controllers\Auth\LoginController;
+use App\Http\Controllers\Cards\CardController;
+use App\Http\Controllers\Cards\StoryController;
+use App\Http\Controllers\Worlds\CreateWorldController;
+use App\Http\Controllers\Worlds\WorldDashboardController;
+use App\Http\Controllers\Worlds\WorldsController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
-    return view('welcome');
+    return auth()->check() ? redirect()->route('worlds.index') : redirect()->route('login');
+})->name('home');
+
+Route::get('/login', [LoginController::class, 'showLoginForm'])->name('login');
+Route::post('/login', [LoginController::class, 'login']);
+Route::post('/logout', [LoginController::class, 'logout'])->name('logout');
+
+Route::middleware('auth')->group(function () {
+    Route::get('/worlds', [WorldsController::class, 'index'])->name('worlds.index');
+    Route::get('/worlds/create', [CreateWorldController::class, 'create'])->name('worlds.create');
+    Route::post('/worlds', [CreateWorldController::class, 'store'])->name('worlds.store');
+    Route::get('/worlds/{world}', [WorldDashboardController::class, 'show'])->name('worlds.dashboard');
+
+    Route::get('/worlds/{world}/cards', [StoryController::class, 'index'])->name('cards.index');
+    Route::post('/worlds/{world}/cards/stories', [StoryController::class, 'store'])->name('cards.stories.store');
+    Route::get('/worlds/{world}/cards/stories/{story}', [StoryController::class, 'show'])->name('cards.show');
+    Route::put('/worlds/{world}/cards/{card}', [CardController::class, 'update'])->name('cards.update');
+    Route::post('/worlds/{world}/cards/{card}/decompose', [CardController::class, 'decompose'])->name('cards.decompose');
 });
