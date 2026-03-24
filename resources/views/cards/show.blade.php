@@ -302,7 +302,7 @@
                 <textarea name="synopsis" id="storySettingsSynopsis" rows="6" placeholder="Краткое описание истории (необязательно)"
                     class="textarea textarea-bordered w-full rounded-none bg-base-200 border-base-300 resize-y min-h-[8rem] @error('synopsis') textarea-error @enderror"
                     aria-describedby="storySettingsSynopsis-desc">{{ old('synopsis', $story->synopsis) }}</textarea>
-                <p id="storySettingsSynopsis-desc" class="text-xs text-base-content/50 mt-1">Краткое описание; длинные тексты допустимы. Мягкий ориентир — до ~8000 знаков (проверка на сервере может отличаться).</p>
+                <p id="storySettingsSynopsis-desc" class="text-xs text-base-content/50 mt-1">Краткое описание; длинные тексты допустимы. Мягкий ориентир — до ~8000 знаков.</p>
                 <p id="storySettingsSynopsisCounter" class="text-xs text-right mt-1 tabular-nums" aria-live="polite"></p>
                 @error('synopsis')
                     <p class="text-error text-sm mt-1">{{ $message }}</p>
