@@ -16,7 +16,20 @@ class World extends Model
         'reference_point',
         'annotation',
         'image_path',
+        'onoff',
     ];
+
+    protected function casts(): array
+    {
+        return [
+            'onoff' => 'boolean',
+        ];
+    }
+
+    public function scopeActive($query)
+    {
+        return $query->where('onoff', true);
+    }
 
     public function user(): BelongsTo
     {
@@ -30,14 +43,14 @@ class World extends Model
 
     public function imageUrl(): ?string
     {
-        if (!$this->image_path) {
+        if (! $this->image_path) {
             return null;
         }
 
         if (str_starts_with($this->image_path, 'worlds/')) {
-            return asset('storage/' . $this->image_path);
+            return asset('storage/'.$this->image_path);
         }
 
-        return $this->user->getUploadsUrl('worlds/' . $this->image_path);
+        return $this->user->getUploadsUrl('worlds/'.$this->image_path);
     }
 }

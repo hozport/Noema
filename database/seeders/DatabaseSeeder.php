@@ -26,7 +26,10 @@ class DatabaseSeeder extends Seeder
 
         World::updateOrCreate(
             ['user_id' => $user->id, 'name' => 'Пример мира'],
-            ['annotation' => 'Описание мира для примера. Здесь может быть краткая аннотация проекта.']
+            [
+                'annotation' => 'Описание мира для примера. Здесь может быть краткая аннотация проекта.',
+                'onoff' => true,
+            ]
         );
     }
 }

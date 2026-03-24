@@ -20,11 +20,17 @@ Route::middleware('auth')->group(function () {
     Route::get('/worlds', [WorldsController::class, 'index'])->name('worlds.index');
     Route::get('/worlds/create', [CreateWorldController::class, 'create'])->name('worlds.create');
     Route::post('/worlds', [CreateWorldController::class, 'store'])->name('worlds.store');
+    Route::delete('/worlds/{world}', [WorldsController::class, 'destroy'])->name('worlds.destroy');
     Route::get('/worlds/{world}', [WorldDashboardController::class, 'show'])->name('worlds.dashboard');
 
     Route::get('/worlds/{world}/cards', [StoryController::class, 'index'])->name('cards.index');
     Route::post('/worlds/{world}/cards/stories', [StoryController::class, 'store'])->name('cards.stories.store');
     Route::get('/worlds/{world}/cards/stories/{story}', [StoryController::class, 'show'])->name('cards.show');
+    Route::put('/worlds/{world}/cards/stories/{story}', [StoryController::class, 'update'])->name('cards.stories.update');
+    Route::get('/worlds/{world}/cards/stories/{story}/pdf', [StoryController::class, 'pdf'])->name('cards.stories.pdf');
+    Route::post('/worlds/{world}/cards/stories/{story}/reorder', [CardController::class, 'reorder'])->name('cards.reorder');
     Route::put('/worlds/{world}/cards/{card}', [CardController::class, 'update'])->name('cards.update');
+    Route::delete('/worlds/{world}/cards/{card}', [CardController::class, 'destroy'])->name('cards.destroy');
+    Route::post('/worlds/{world}/cards/{card}/highlight', [CardController::class, 'highlight'])->name('cards.highlight');
     Route::post('/worlds/{world}/cards/{card}/decompose', [CardController::class, 'decompose'])->name('cards.decompose');
 });

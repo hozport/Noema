@@ -14,6 +14,10 @@ class WorldDashboardController extends Controller
             abort(403);
         }
 
+        if (! $world->onoff) {
+            abort(404);
+        }
+
         return view('dashboard.show', compact('world'));
     }
 }
