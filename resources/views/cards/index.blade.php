@@ -85,50 +85,60 @@
     </style>
 </head>
 <body class="min-h-screen bg-base-100 flex flex-col">
-    <header class="flex items-center justify-between p-6 border-b border-base-300">
-        <a href="{{ route('worlds.index') }}" class="font-display text-xl tracking-widest text-base-content/80 hover:text-base-content transition">
-            <span class="text-base-content/50">GENEFIS MEDIA's</span>
-            <span class="block text-2xl font-semibold text-base-content">NOEMA</span>
-        </a>
-        <form method="POST" action="{{ route('logout') }}" class="inline">
-            @csrf
-            <button type="submit" class="btn btn-ghost btn-sm btn-square text-base-content/70 hover:text-base-content hover:bg-base-200" title="Выход">
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
-                    <polyline points="16 17 21 12 16 7"/>
-                    <line x1="21" y1="12" x2="9" y2="12"/>
-                </svg>
-            </button>
-        </form>
-    </header>
+    @include('site.partials.header')
 
     <main class="flex-1 p-6 max-w-[1344px] w-full mx-auto">
-        <div class="flex items-center justify-between mb-8">
-            <h1 class="text-[1.875rem] font-semibold text-base-content" style="font-family: 'Cormorant Garamond', Georgia, serif;">Карточки</h1>
-            <div class="flex items-center gap-2">
-            <a href="{{ route('worlds.dashboard', $world) }}" class="btn btn-ghost btn-square" title="Назад в дашборд">
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M19 12H5M12 19l-7-7 7-7"/>
-                </svg>
-            </a>
-            <button type="button" class="btn btn-ghost btn-square" onclick="document.getElementById('addStoryModal').showModal()" title="Новая история" aria-label="Новая история">
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                    <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
-                </svg>
-            </button>
+        <div class="mb-8 space-y-4">
+            <div class="flex flex-wrap items-center justify-between gap-4">
+                <h1 class="text-[1.875rem] font-semibold text-base-content leading-tight min-w-0" style="font-family: 'Cormorant Garamond', Georgia, serif;">Карточки</h1>
+                <div class="flex items-center gap-1 shrink-0">
+                    <a href="{{ route('worlds.dashboard', $world) }}" class="btn btn-ghost btn-square" title="Назад в дашборд" aria-label="Назад в дашборд">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <path d="M19 12H5M12 19l-7-7 7-7"/>
+                        </svg>
+                    </a>
+                    <button type="button" class="btn btn-ghost btn-square" onclick="document.getElementById('addStoryModal').showModal()" title="Новая история" aria-label="Новая история">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+                        </svg>
+                    </button>
+                </div>
             </div>
+            @if ($cycleOptions->isNotEmpty())
+                <form method="get" action="{{ route('cards.index', $world) }}" class="flex flex-wrap items-center gap-2">
+                    <label for="cards-cycle-filter" class="text-sm text-base-content/70 whitespace-nowrap">Цикл</label>
+                    <select id="cards-cycle-filter" name="cycle"
+                        class="select select-bordered select-sm rounded-none bg-base-200 border-base-300 min-w-[12rem] max-w-[20rem]"
+                        onchange="this.form.submit()">
+                        <option value="" @selected($cycleFilter === null)>Все циклы</option>
+                        @foreach ($cycleOptions as $opt)
+                            <option value="{{ $opt }}" @selected((string) $cycleFilter === (string) $opt)>{{ $opt }}</option>
+                        @endforeach
+                    </select>
+                    <noscript>
+                        <button type="submit" class="btn btn-sm btn-primary rounded-none">Показать</button>
+                    </noscript>
+                </form>
+            @endif
         </div>
 
         @if ($stories->isNotEmpty())
             <div class="card-block-container">
                 @foreach ($stories as $story)
-                    <a href="{{ route('cards.show', [$world, $story]) }}" class="card card-block bg-base-200 border border-base-300 hover:border-primary/30 transition-colors flex items-center justify-center p-6">
-                        <h2 class="text-lg font-semibold text-base-content text-center">{{ $story->name }}</h2>
+                    <a href="{{ route('cards.show', [$world, $story]) }}" class="card card-block bg-base-200 border border-base-300 hover:border-primary/30 transition-colors flex flex-col items-center justify-center gap-1 p-6 text-center">
+                        <h2 class="text-lg font-semibold text-base-content">{{ $story->name }}</h2>
+                        @if (filled($story->cycle))
+                            <p class="text-xs text-base-content/55 leading-tight">{{ $story->cycle }}</p>
+                        @endif
                     </a>
                 @endforeach
             </div>
         @else
-            <p class="text-base-content/60 mb-6">Пока нет историй. Создайте первую.</p>
+            @if (filled($cycleFilter))
+                <p class="text-base-content/60 mb-6">Нет историй с выбранным циклом. <a href="{{ route('cards.index', $world) }}" class="link link-hover">Показать все истории</a>.</p>
+            @else
+                <p class="text-base-content/60 mb-6">Пока нет историй. Создайте первую.</p>
+            @endif
         @endif
     </main>
 
@@ -146,6 +156,20 @@
                 <p id="newStoryNameCounter" class="text-xs text-right mt-1 tabular-nums" aria-live="polite"></p>
                 @error('name')
                     <p class="text-error text-sm mb-3">{{ $message }}</p>
+                @enderror
+                <label for="newStoryCycle" class="block text-sm text-base-content/70 mb-1 mt-4">Цикл</label>
+                <input type="text" id="newStoryCycle" name="cycle" value="{{ old('cycle') }}" list="story-cycle-datalist" maxlength="255" placeholder="Выберите из списка или введите свой"
+                    class="input input-bordered w-full rounded-none bg-base-200 border-base-300 @error('cycle') input-error @enderror"
+                    aria-describedby="newStoryCycle-desc">
+                <datalist id="story-cycle-datalist">
+                    @foreach ($cycleOptions as $c)
+                        <option value="{{ $c }}"></option>
+                    @endforeach
+                </datalist>
+                <p id="newStoryCycle-desc" class="text-xs text-base-content/50 mt-1">Необязательно. Общий цикл для нескольких историй: можно выбрать уже существующий или задать новый.</p>
+                <p id="newStoryCycleCounter" class="text-xs text-right mt-1 tabular-nums" aria-live="polite"></p>
+                @error('cycle')
+                    <p class="text-error text-sm mt-1">{{ $message }}</p>
                 @enderror
                 <label for="newStorySynopsis" class="block text-sm text-base-content/70 mb-1 mt-4">Синопсис</label>
                 <textarea id="newStorySynopsis" name="synopsis" rows="5" placeholder="Краткое описание (необязательно)"
@@ -167,10 +191,8 @@
         </div>
     </dialog>
 
-    <footer class="py-4 text-center text-sm text-base-content/50 border-t border-base-300 mt-auto">
-        &copy; GENEFIS MEDIA, {{ date('Y') }}
-    </footer>
-    @if ($errors->any())
+    @include('site.partials.footer')
+    @if ($errors->any() && ($errors->has('name') || $errors->has('synopsis') || $errors->has('cycle')))
         <script>
             document.addEventListener('DOMContentLoaded', function () {
                 var d = document.getElementById('addStoryModal');

@@ -14,6 +14,9 @@
 </head>
 <body>
     <h1>{{ $story->name }}</h1>
+    @if (filled($story->cycle))
+        <p style="font-size: 10pt; color: #444; margin: -0.5em 0 1em;">Цикл: {{ $story->cycle }}</p>
+    @endif
     @foreach ($story->cards as $card)
         <div class="card">
             <div class="num">№ {{ $card->number }}</div>

@@ -3,10 +3,10 @@
 namespace App\Models;
 
 use App\Models\Worlds\World;
-
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Str;
@@ -23,6 +23,9 @@ class User extends Authenticatable
      */
     protected $fillable = [
         'name',
+        'display_name',
+        'bio',
+        'avatar_path',
         'email',
         'password',
         'folder_token',
@@ -51,21 +54,42 @@ class User extends Authenticatable
         ];
     }
 
-    public function worlds(): \Illuminate\Database\Eloquent\Relations\HasMany
+    public function worlds(): HasMany
     {
         return $this->hasMany(World::class);
     }
 
     public function getUploadsPath(string $subpath = ''): string
     {
-        $base = public_path('uploads/users/' . $this->folder_token);
-        return $subpath ? $base . '/' . trim($subpath, '/') : $base;
+        $base = public_path('uploads/users/'.$this->folder_token);
+
+        return $subpath ? $base.'/'.trim($subpath, '/') : $base;
     }
 
     public function getUploadsUrl(string $subpath = ''): string
     {
-        $base = 'uploads/users/' . $this->folder_token;
-        return asset($base . ($subpath ? '/' . trim($subpath, '/') : ''));
+        $base = 'uploads/users/'.$this->folder_token;
+
+        return asset($base.($subpath ? '/'.trim($subpath, '/') : ''));
+    }
+
+    public function avatarUrl(): ?string
+    {
+        if (empty($this->avatar_path)) {
+            return null;
+        }
+
+        return $this->getUploadsUrl($this->avatar_path);
+    }
+
+    /**
+     * Имя для отображения в интерфейсе (если не задано — учётное имя).
+     */
+    public function displayNameOrName(): string
+    {
+        $display = trim((string) $this->display_name);
+
+        return $display !== '' ? $display : $this->name;
     }
 
     protected static function booted(): void

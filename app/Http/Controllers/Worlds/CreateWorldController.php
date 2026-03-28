@@ -3,7 +3,7 @@
 namespace App\Http\Controllers\Worlds;
 
 use App\Http\Controllers\Controller;
-use App\Models\Worlds\World;
+use App\Services\TimelineBootstrapService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 
@@ -28,11 +28,11 @@ class CreateWorldController extends Controller
 
         if ($request->hasFile('image')) {
             $worldsDir = $user->getUploadsPath('worlds');
-            if (!is_dir($worldsDir)) {
+            if (! is_dir($worldsDir)) {
                 mkdir($worldsDir, 0755, true);
             }
             $extension = $request->file('image')->getClientOriginalExtension();
-            $filename = Str::random(20) . '.' . $extension;
+            $filename = Str::random(20).'.'.$extension;
             $request->file('image')->move($worldsDir, $filename);
             $imagePath = $filename;
         }
@@ -43,6 +43,8 @@ class CreateWorldController extends Controller
             'annotation' => $validated['annotation'] ?? null,
             'image_path' => $imagePath,
         ]);
+
+        TimelineBootstrapService::bootstrap($world);
 
         return redirect()->route('worlds.dashboard', $world);
     }

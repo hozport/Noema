@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\DB;
 
 class Story extends Model
 {
-    protected $fillable = ['world_id', 'name', 'synopsis'];
+    protected $fillable = ['world_id', 'name', 'cycle', 'synopsis'];
 
     public function world(): BelongsTo
     {

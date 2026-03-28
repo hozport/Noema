@@ -1,37 +1,44 @@
-<!DOCTYPE html>
-<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" data-theme="dark">
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Мои Миры — Noema</title>
-    <link rel="preconnect" href="https://fonts.bunny.net">
-    <link href="https://fonts.bunny.net/css?family=cormorant-garamond:400,500,600,700|instrument-sans:400,500,600" rel="stylesheet">
-    @if (file_exists(public_path('build/manifest.json')) || file_exists(public_path('hot')))
-        @vite(['resources/css/app.css', 'resources/js/app.js'])
-    @endif
-</head>
-<body class="min-h-screen bg-base-100 flex flex-col">
-    <header class="flex items-center justify-between p-6 border-b border-base-300">
-        <a href="{{ route('worlds.index') }}" class="font-display text-xl tracking-widest text-base-content/80 hover:text-base-content transition">
-            <span class="text-base-content/50">GENEFIS MEDIA's</span>
-            <span class="block text-2xl font-semibold text-base-content">NOEMA</span>
-        </a>
-        <form method="POST" action="{{ route('logout') }}" class="inline">
-            @csrf
-            <button type="submit" class="btn btn-ghost btn-sm btn-square text-base-content/70 hover:text-base-content hover:bg-base-200" title="Выход">
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
-                    <polyline points="16 17 21 12 16 7"/>
-                    <line x1="21" y1="12" x2="9" y2="12"/>
-                </svg>
-            </button>
-        </form>
-    </header>
+@extends('layouts.noema-app')
 
-    <main class="flex-1 p-6 max-w-[1344px] w-full mx-auto">
+@section('title', 'Мои миры — Noema')
+
+@section('content')
         @if (session('success'))
             <p class="text-success mb-4">{{ session('success') }}</p>
         @endif
+
+        <div class="flex flex-col gap-4 mb-10">
+            <div class="flex flex-wrap items-start justify-between gap-4 w-full">
+                <div class="min-w-0 flex-1 pr-0 lg:pr-4">
+                    <h1 class="font-display text-3xl md:text-4xl text-base-content font-semibold tracking-tight mb-3">Мои миры</h1>
+                    <p class="text-base text-base-content/75 max-w-3xl leading-relaxed">
+                        На данной странице представлены созданные вами Миры. Выберите один из них, чтобы перейти к Дашборду этого Мира.
+                    </p>
+                </div>
+                <div class="flex items-center gap-1 shrink-0">
+                    <a href="{{ route('account.profile') }}" class="btn btn-ghost btn-square rounded-none" title="Профиль" aria-label="Профиль">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                            <circle cx="12" cy="7" r="4"/>
+                        </svg>
+                    </a>
+                    <a href="{{ route('account.team') }}" class="btn btn-ghost btn-square rounded-none" title="Команда" aria-label="Команда">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                            <circle cx="9" cy="7" r="4"/>
+                            <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                            <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                        </svg>
+                    </a>
+                    <a href="{{ route('account.settings') }}" class="btn btn-ghost btn-square rounded-none" title="Настройки" aria-label="Настройки">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <circle cx="12" cy="12" r="3"/>
+                            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+                        </svg>
+                    </a>
+                </div>
+            </div>
+        </div>
 
         @if ($worlds->isNotEmpty())
             <div class="world-cards-grid mb-12">
@@ -73,7 +80,6 @@
                 Создать Мир
             </a>
         </div>
-    </main>
 
     <dialog id="deleteWorldModal" class="modal modal-middle">
         <div class="modal-box modal-styled rounded-none">
@@ -89,7 +95,9 @@
         </div>
         <form method="dialog" class="modal-backdrop"><button type="submit">close</button></form>
     </dialog>
+@endsection
 
+@push('styles')
     <style>
         .world-cards-grid { display: flex; flex-wrap: wrap; gap: 1rem; }
         .world-card {
@@ -168,7 +176,9 @@
             box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5) !important;
         }
     </style>
+@endpush
 
+@push('scripts')
     <script>
         const deleteWorldModal = document.getElementById('deleteWorldModal');
         const deleteWorldForm = document.getElementById('deleteWorldForm');
@@ -178,9 +188,4 @@
             deleteWorldModal.showModal();
         }
     </script>
-
-    <footer class="py-4 text-center text-sm text-base-content/50 border-t border-base-300 mt-auto">
-        &copy; GENEFIS MEDIA, {{ date('Y') }}
-    </footer>
-</body>
-</html>
+@endpush

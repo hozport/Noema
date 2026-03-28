@@ -2,8 +2,10 @@
 
 namespace Database\Seeders;
 
+use App\Models\Bestiary\Creature;
 use App\Models\User;
 use App\Models\Worlds\World;
+use App\Services\TimelineBootstrapService;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 
@@ -24,12 +26,21 @@ class DatabaseSeeder extends Seeder
             ]
         );
 
-        World::updateOrCreate(
+        $world = World::updateOrCreate(
             ['user_id' => $user->id, 'name' => 'Пример мира'],
             [
                 'annotation' => 'Описание мира для примера. Здесь может быть краткая аннотация проекта.',
                 'onoff' => true,
             ]
+        );
+
+        if (! $world->timelineLines()->exists()) {
+            TimelineBootstrapService::bootstrap($world);
+        }
+
+        Creature::firstOrCreate(
+            ['world_id' => $world->id, 'name' => 'Аспид (тест)'],
+            ['scientific_name' => 'Testus aspis']
         );
     }
 }

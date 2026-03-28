@@ -88,11 +88,13 @@ function initStoryPageModals() {
     if (storySettingsModal) {
         installFocusTrap(storySettingsModal);
         const nameInput = document.getElementById('storySettingsName');
+        const cycleInput = document.getElementById('storySettingsCycle');
         const synopsisInput = document.getElementById('storySettingsSynopsis');
-        let settingsSnapshot = { name: '', synopsis: '' };
+        let settingsSnapshot = { name: '', cycle: '', synopsis: '' };
 
         const settingsDirty = () =>
             (nameInput?.value ?? '') !== settingsSnapshot.name ||
+            (cycleInput?.value ?? '') !== settingsSnapshot.cycle ||
             (synopsisInput?.value ?? '') !== settingsSnapshot.synopsis;
 
         const settingsGuardedClose = createGuardedClose(storySettingsModal, settingsDirty);
@@ -104,6 +106,7 @@ function initStoryPageModals() {
             }
             settingsSnapshot = {
                 name: nameInput?.value ?? '',
+                cycle: cycleInput?.value ?? '',
                 synopsis: synopsisInput?.value ?? '',
             };
             requestAnimationFrame(() => nameInput?.focus());
@@ -117,14 +120,17 @@ function initStoryPageModals() {
         });
 
         const nameCounter = document.getElementById('storySettingsNameCounter');
+        const cycleCounter = document.getElementById('storySettingsCycleCounter');
         const synCounter = document.getElementById('storySettingsSynopsisCounter');
         bindCounter(nameInput, nameCounter, { soft: 200, maxLength: 255 });
+        bindCounter(cycleInput, cycleCounter, { maxLength: 255 });
         bindCounter(synopsisInput, synCounter, { soft: 6000, hard: 8000 });
 
         const settingsForm = storySettingsModal.querySelector('form.story-dialog__panel');
         settingsForm?.addEventListener('submit', () => {
             settingsSnapshot = {
                 name: nameInput?.value ?? '',
+                cycle: cycleInput?.value ?? '',
                 synopsis: synopsisInput?.value ?? '',
             };
         });

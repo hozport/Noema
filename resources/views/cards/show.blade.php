@@ -174,29 +174,19 @@
     </style>
 </head>
 <body class="min-h-screen bg-base-100 flex flex-col">
-    <header class="flex items-center justify-between p-6 border-b border-base-300">
-        <a href="{{ route('worlds.index') }}" class="font-display text-xl tracking-widest text-base-content/80 hover:text-base-content transition">
-            <span class="text-base-content/50">GENEFIS MEDIA's</span>
-            <span class="block text-2xl font-semibold text-base-content">NOEMA</span>
-        </a>
-        <form method="POST" action="{{ route('logout') }}" class="inline">
-            @csrf
-            <button type="submit" class="btn btn-ghost btn-sm btn-square text-base-content/70 hover:text-base-content hover:bg-base-200" title="Выход">
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
-                    <polyline points="16 17 21 12 16 7"/>
-                    <line x1="21" y1="12" x2="9" y2="12"/>
-                </svg>
-            </button>
-        </form>
-    </header>
+    @include('site.partials.header')
 
     <main class="flex-1 p-6 max-w-[1344px] w-full mx-auto">
         <div id="story-page-root" data-world-id="{{ $world->id }}" data-story-id="{{ $story->id }}">
-        <div class="flex items-center justify-between mb-8 gap-4">
-            <h1 class="text-[1.875rem] font-semibold text-base-content" style="font-family: 'Cormorant Garamond', Georgia, serif;">{{ $story->name }}</h1>
-            <div class="flex items-center gap-1 shrink-0">
-                <a href="{{ route('cards.index', $world) }}" class="btn btn-ghost btn-square" title="Назад к списку историй">
+        <div class="flex items-start justify-between mb-8 gap-4">
+            <div class="min-w-0">
+                <h1 class="text-[1.875rem] font-semibold text-base-content leading-tight" style="font-family: 'Cormorant Garamond', Georgia, serif;">{{ $story->name }}</h1>
+                @if (filled($story->cycle))
+                    <p class="text-sm text-base-content/55 mt-1">{{ $story->cycle }}</p>
+                @endif
+            </div>
+            <div class="flex items-center gap-1 shrink-0 mt-0.5">
+                <a href="{{ route('cards.index', $world) }}" class="btn btn-ghost btn-square" title="Назад к списку историй" aria-label="Назад к списку историй">
                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                         <path d="M19 12H5M12 19l-7-7 7-7"/>
                     </svg>
@@ -298,6 +288,20 @@
                 @error('name')
                     <p class="text-error text-sm mt-1">{{ $message }}</p>
                 @enderror
+                <label for="storySettingsCycle" class="block text-sm text-base-content/70 mb-1 mt-4">Цикл</label>
+                <input type="text" name="cycle" id="storySettingsCycle" value="{{ old('cycle', $story->cycle) }}" list="story-settings-cycle-datalist" maxlength="255" placeholder="Выберите из списка или введите свой"
+                    class="input input-bordered w-full rounded-none bg-base-200 border-base-300 @error('cycle') input-error @enderror"
+                    aria-describedby="storySettingsCycle-desc">
+                <datalist id="story-settings-cycle-datalist">
+                    @foreach ($storyCycles as $c)
+                        <option value="{{ $c }}"></option>
+                    @endforeach
+                </datalist>
+                <p id="storySettingsCycle-desc" class="text-xs text-base-content/50 mt-1">Необязательно. Циклы из других историй этого мира можно выбрать из списка.</p>
+                <p id="storySettingsCycleCounter" class="text-xs text-right mt-1 tabular-nums" aria-live="polite"></p>
+                @error('cycle')
+                    <p class="text-error text-sm mt-1">{{ $message }}</p>
+                @enderror
                 <label for="storySettingsSynopsis" class="block text-sm text-base-content/70 mb-1 mt-4">Синопсис</label>
                 <textarea name="synopsis" id="storySettingsSynopsis" rows="6" placeholder="Краткое описание истории (необязательно)"
                     class="textarea textarea-bordered w-full rounded-none bg-base-200 border-base-300 resize-y min-h-[8rem] @error('synopsis') textarea-error @enderror"
@@ -376,11 +380,9 @@
         @method('DELETE')
     </form>
 
-    <footer class="py-4 text-center text-sm text-base-content/50 border-t border-base-300 mt-auto">
-        &copy; GENEFIS MEDIA, {{ date('Y') }}
-    </footer>
+    @include('site.partials.footer')
 
-    @if ($errors->any() && ($errors->has('name') || $errors->has('synopsis')))
+    @if ($errors->any() && ($errors->has('name') || $errors->has('synopsis') || $errors->has('cycle')))
         <script>
             document.addEventListener('DOMContentLoaded', function () {
                 var el = document.getElementById('storySettingsModal');

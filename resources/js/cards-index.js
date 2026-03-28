@@ -44,11 +44,13 @@ document.addEventListener('DOMContentLoaded', () => {
     installFocusTrap(dialog);
 
     const nameInput = document.getElementById('newStoryName');
+    const cycleInput = document.getElementById('newStoryCycle');
     const synopsisInput = document.getElementById('newStorySynopsis');
-    let snapshot = { name: '', synopsis: '' };
+    let snapshot = { name: '', cycle: '', synopsis: '' };
 
     const isDirty = () =>
         (nameInput?.value ?? '') !== snapshot.name ||
+        (cycleInput?.value ?? '') !== snapshot.cycle ||
         (synopsisInput?.value ?? '') !== snapshot.synopsis;
 
     const guardedClose = createGuardedClose(dialog, isDirty);
@@ -67,19 +69,23 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         snapshot = {
             name: nameInput?.value ?? '',
+            cycle: cycleInput?.value ?? '',
             synopsis: synopsisInput?.value ?? '',
         };
         requestAnimationFrame(() => nameInput?.focus());
     });
 
     const nameCounter = document.getElementById('newStoryNameCounter');
+    const cycleCounter = document.getElementById('newStoryCycleCounter');
     const synCounter = document.getElementById('newStorySynopsisCounter');
     bindCounter(nameInput, nameCounter, { soft: 200, maxLength: 255 });
+    bindCounter(cycleInput, cycleCounter, { maxLength: 255 });
     bindCounter(synopsisInput, synCounter, { soft: 6000, hard: 8000 });
 
     dialog.querySelector('form.story-dialog__panel')?.addEventListener('submit', () => {
         snapshot = {
             name: nameInput?.value ?? '',
+            cycle: cycleInput?.value ?? '',
             synopsis: synopsisInput?.value ?? '',
         };
     });

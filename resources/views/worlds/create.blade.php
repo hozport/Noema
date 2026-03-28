@@ -32,22 +32,7 @@
     </style>
 </head>
 <body class="min-h-screen bg-base-100 flex flex-col">
-    <header class="flex items-center justify-between p-6 border-b border-base-300">
-        <a href="{{ route('worlds.index') }}" class="font-display text-xl tracking-widest text-base-content/80 hover:text-base-content transition">
-            <span class="text-base-content/50">GENEFIS MEDIA's</span>
-            <span class="block text-2xl font-semibold text-base-content">NOEMA</span>
-        </a>
-        <form method="POST" action="{{ route('logout') }}" class="inline">
-            @csrf
-            <button type="submit" class="btn btn-ghost btn-sm btn-square text-base-content/70 hover:text-base-content hover:bg-base-200" title="Выход">
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
-                    <polyline points="16 17 21 12 16 7"/>
-                    <line x1="21" y1="12" x2="9" y2="12"/>
-                </svg>
-            </button>
-        </form>
-    </header>
+    @include('site.partials.header')
 
     <main style="flex: 1; display: flex; align-items: center; justify-content: center; padding: 4rem 3rem 6rem;">
         <div style="width: 60%; max-width: 900px; min-width: 320px;">
@@ -122,9 +107,7 @@
             </form>
         </div>
     </main>
-    <footer class="py-4 text-center text-sm text-base-content/50 border-t border-base-300 mt-auto">
-        &copy; GENEFIS MEDIA, {{ date('Y') }}
-    </footer>
+    @include('site.partials.footer')
     {{-- Стили в конце body, чтобы переопределить Tailwind/DaisyUI --}}
     <style>
         .create-form textarea::placeholder,

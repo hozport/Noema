@@ -1,0 +1,107 @@
+<?php
+
+namespace App\Http\Controllers\Biography;
+
+use App\Http\Controllers\Controller;
+use App\Http\Requests\Biography\StoreBiographyEventRequest;
+use App\Http\Requests\Biography\UpdateBiographyEventRequest;
+use App\Models\Biography\Biography;
+use App\Models\Biography\BiographyEvent;
+use App\Models\Worlds\World;
+use Illuminate\Http\JsonResponse;
+
+class BiographyEventController extends Controller
+{
+    public function store(StoreBiographyEventRequest $request, World $world, Biography $biography): JsonResponse
+    {
+        $this->authorizeBiography($world, $biography);
+
+        $data = $request->validated();
+        $event = $biography->biographyEvents()->create([
+            'title' => $data['title'],
+            'epoch_year' => $data['epoch_year'] ?? null,
+            'year_end' => $data['year_end'] ?? null,
+            'month' => $data['month'] ?? 1,
+            'day' => $data['day'] ?? 1,
+            'body' => $data['body'] ?? null,
+            'breaks_line' => $request->boolean('breaks_line'),
+        ]);
+
+        return response()->json([
+            'ok' => true,
+            'event' => $this->eventPayload($event),
+        ]);
+    }
+
+    public function update(UpdateBiographyEventRequest $request, World $world, Biography $biography, BiographyEvent $biographyEvent): JsonResponse
+    {
+        $this->authorizeBiography($world, $biography);
+        if ((int) $biographyEvent->biography_id !== (int) $biography->id) {
+            abort(404);
+        }
+
+        $data = $request->validated();
+        $biographyEvent->update([
+            'title' => $data['title'],
+            'epoch_year' => $data['epoch_year'] ?? null,
+            'year_end' => $data['year_end'] ?? null,
+            'month' => $data['month'] ?? 1,
+            'day' => $data['day'] ?? 1,
+            'body' => $data['body'] ?? null,
+            'breaks_line' => $request->boolean('breaks_line'),
+        ]);
+
+        $te = $biographyEvent->timelineEvent()->with('line')->first();
+        if ($te) {
+            $line = $te->line;
+            $te->update([
+                'breaks_line' => $line->is_main ? false : (bool) $biographyEvent->breaks_line,
+            ]);
+        }
+
+        return response()->json([
+            'ok' => true,
+            'event' => $this->eventPayload($biographyEvent->fresh()),
+        ]);
+    }
+
+    public function destroy(World $world, Biography $biography, BiographyEvent $biographyEvent): JsonResponse
+    {
+        $this->authorizeBiography($world, $biography);
+        if ((int) $biographyEvent->biography_id !== (int) $biography->id) {
+            abort(404);
+        }
+
+        $biographyEvent->delete();
+
+        return response()->json(['ok' => true]);
+    }
+
+    private function authorizeBiography(World $world, Biography $biography): void
+    {
+        if ($world->user_id !== auth()->id() || (int) $biography->world_id !== (int) $world->id) {
+            abort(403);
+        }
+        if (! $world->onoff) {
+            abort(404);
+        }
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function eventPayload(BiographyEvent $e): array
+    {
+        return [
+            'id' => $e->id,
+            'title' => $e->title,
+            'epoch_year' => $e->epoch_year,
+            'year_end' => $e->year_end,
+            'month' => $e->month,
+            'day' => $e->day,
+            'body' => $e->body,
+            'breaks_line' => (bool) $e->breaks_line,
+            'on_timeline' => $e->isOnTimeline(),
+        ];
+    }
+}
