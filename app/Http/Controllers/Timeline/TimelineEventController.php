@@ -5,9 +5,13 @@ namespace App\Http\Controllers\Timeline;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Timeline\StoreTimelineEventRequest;
 use App\Http\Requests\Timeline\UpdateTimelineEventRequest;
+use App\Models\Biography\BiographyEvent;
+use App\Models\Faction\FactionEvent;
 use App\Models\Timeline\TimelineEvent;
 use App\Models\Timeline\TimelineLine;
 use App\Models\Worlds\World;
+use App\Services\BiographyTimelineSyncService;
+use App\Services\FactionTimelineSyncService;
 use Illuminate\Http\Request;
 
 class TimelineEventController extends Controller
@@ -52,6 +56,13 @@ class TimelineEventController extends Controller
             'breaks_line' => $breaksLine,
         ]);
 
+        if ($timelineEvent->source_type === BiographyEvent::class) {
+            app(BiographyTimelineSyncService::class)->syncLinkedBiographyEventFromTimeline($timelineEvent);
+        }
+        if ($timelineEvent->source_type === FactionEvent::class) {
+            app(FactionTimelineSyncService::class)->syncLinkedFactionEventFromTimeline($timelineEvent);
+        }
+
         $timelineEvent->line->recalculateBoundsFromEvents();
 
         return redirect()->route('worlds.timeline', $world);
@@ -69,6 +80,7 @@ class TimelineEventController extends Controller
 
         $line = $timelineEvent->line;
         $timelineEvent->biographies()->detach();
+        $timelineEvent->factions()->detach();
         $timelineEvent->delete();
         $line->recalculateBoundsFromEvents();
 

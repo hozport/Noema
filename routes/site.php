@@ -12,4 +12,5 @@ Route::name('site.')->group(function () {
     Route::get('/consent', [SiteController::class, 'consent'])->name('consent');
     Route::get('/legal', [SiteController::class, 'legal'])->name('legal');
     Route::get('/register', [SiteController::class, 'register'])->name('register');
+    Route::get('/tools/svg-viewer', [SiteController::class, 'svgViewer'])->name('svg-viewer');
 });

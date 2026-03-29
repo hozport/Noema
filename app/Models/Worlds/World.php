@@ -5,6 +5,7 @@ namespace App\Models\Worlds;
 use App\Models\Bestiary\Creature;
 use App\Models\Biography\Biography;
 use App\Models\Cards\Story;
+use App\Models\Faction\Faction;
 use App\Models\Timeline\TimelineLine;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Model;
@@ -55,9 +56,24 @@ class World extends Model
         return $this->hasMany(Biography::class);
     }
 
+    public function factions(): HasMany
+    {
+        return $this->hasMany(Faction::class);
+    }
+
     public function timelineLines(): HasMany
     {
         return $this->hasMany(TimelineLine::class);
+    }
+
+    public function connectionBoards(): HasMany
+    {
+        return $this->hasMany(ConnectionBoard::class)->orderByDesc('updated_at');
+    }
+
+    public function mapSprites(): HasMany
+    {
+        return $this->hasMany(WorldMapSprite::class)->orderBy('id');
     }
 
     public function imageUrl(): ?string

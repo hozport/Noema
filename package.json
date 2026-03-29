@@ -17,6 +17,7 @@
     },
     "dependencies": {
         "alpinejs": "^3.15.8",
+        "konva": "^10.2.3",
         "sortablejs": "^1.15.7"
     }
 }

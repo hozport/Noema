@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Biography;
 use App\Http\Controllers\Controller;
 use App\Models\Worlds\World;
 use App\Support\BestiaryAlphabet;
+use App\Support\FactionType;
 use Dompdf\Dompdf;
 use Dompdf\Options;
 use Illuminate\Http\Request;
@@ -65,7 +66,15 @@ class BiographiesController extends Controller
         $recentBiographies = $world->biographies()
             ->with('world.user')
             ->orderByDesc('created_at')
-            ->limit(8)
+            ->limit(6)
+            ->get();
+
+        $raceFactions = $world->factions()->where('type', FactionType::RACE)->orderBy('name')->get();
+        $peopleFactions = $world->factions()->where('type', FactionType::PEOPLE)->orderBy('name')->get();
+        $countryFactions = $world->factions()->where('type', FactionType::COUNTRY)->orderBy('name')->get();
+        $membershipFactions = $world->factions()
+            ->whereNotIn('type', FactionType::biographyDedicatedTypes())
+            ->orderBy('name')
             ->get();
 
         return view('biographies.index', compact(
@@ -79,7 +88,11 @@ class BiographiesController extends Controller
             'totalBiographies',
             'allBiographies',
             'recentBiographies',
-            'searchQuery'
+            'searchQuery',
+            'raceFactions',
+            'peopleFactions',
+            'countryFactions',
+            'membershipFactions'
         ));
     }
 
@@ -87,7 +100,7 @@ class BiographiesController extends Controller
     {
         $this->authorizeWorld($world);
 
-        $biographies = $world->biographies()->orderBy('name')->get();
+        $biographies = $world->biographies()->with('raceFaction')->orderBy('name')->get();
 
         $html = view('biographies.biographies-pdf', compact('world', 'biographies'))->render();
 

@@ -56,7 +56,7 @@ function hideTimelineContextMenu() {
     if (!contextMenu) {
         return;
     }
-    contextMenu.classList.add('hidden', 'opacity-0', 'invisible');
+    contextMenu.classList.add('hidden');
     contextMenu.innerHTML = '';
     contextMenu.setAttribute('aria-hidden', 'true');
 }
@@ -618,6 +618,48 @@ function initTimelineCanvas() {
     const { tMin, tMax, canvasWidth } = axis;
     const range = tMax - tMin;
 
+    /** Перетаскивание левой кнопкой: сдвиг области просмотра (scrollLeft / scrollTop). */
+    let isPanning = false;
+    let panStartX = 0;
+    let panStartY = 0;
+    let panStartScrollLeft = 0;
+    let panStartScrollTop = 0;
+
+    function onPanMove(e) {
+        if (!isPanning) {
+            return;
+        }
+        const dx = e.clientX - panStartX;
+        const dy = e.clientY - panStartY;
+        scroll.scrollLeft = panStartScrollLeft - dx;
+        scroll.scrollTop = panStartScrollTop - dy;
+    }
+
+    function onPanEnd() {
+        if (!isPanning) {
+            return;
+        }
+        isPanning = false;
+        scroll.classList.remove('is-panning');
+        document.removeEventListener('mousemove', onPanMove);
+        document.removeEventListener('mouseup', onPanEnd);
+    }
+
+    scroll.addEventListener('mousedown', (e) => {
+        if (e.button !== 0) {
+            return;
+        }
+        isPanning = true;
+        panStartX = e.clientX;
+        panStartY = e.clientY;
+        panStartScrollLeft = scroll.scrollLeft;
+        panStartScrollTop = scroll.scrollTop;
+        scroll.classList.add('is-panning');
+        document.addEventListener('mousemove', onPanMove);
+        document.addEventListener('mouseup', onPanEnd);
+        e.preventDefault();
+    });
+
     function xToYear(x) {
         return Math.round(tMin + (x / canvasWidth) * range);
     }
@@ -700,7 +742,7 @@ function initTimelineCanvas() {
      * @param {number} clientX
      * @param {number} clientY
      * @param {'canvas' | 'lineTrack' | 'point'} mode
-     * @param {{ year: number, trackLabel?: string, lineId?: string, eventIds?: number[] }} payload
+     * @param {{ year: number, lineId?: string, eventIds?: number[] }} payload
      */
     function showContextMenu(clientX, clientY, mode, payload) {
         if (!contextMenu) {
@@ -708,14 +750,12 @@ function initTimelineCanvas() {
         }
         hideTooltip();
         const year = payload.year;
-        const trackLabel = payload.trackLabel || '';
         const lineId = payload.lineId || '';
         const eventIds = Array.isArray(payload.eventIds) ? payload.eventIds : [];
-        const metaLine = `<div class="px-2 py-1.5 text-[10px] text-base-content/72 border-t border-base-300/60">Год: <strong class="text-base-content">${year}</strong> г.</div>`;
-        const metaEvent = `<div class="px-2 py-1.5 text-[10px] text-base-content/72 border-t border-base-300/60">${escapeHtml(trackLabel)} · <strong class="text-base-content">${year}</strong> г.</div>`;
 
         if (mode === 'canvas') {
-            contextMenu.innerHTML = `<button type="button" role="menuitem" class="timeline-ctx-create-line w-full text-left px-2 py-2 text-sm font-medium hover:bg-base-200">Создать линию</button>${metaLine}`;
+            contextMenu.innerHTML =
+                '<button type="button" role="menuitem" class="timeline-ctx-item timeline-ctx-create-line">Создать линию</button>';
             const btn = contextMenu.querySelector('.timeline-ctx-create-line');
             if (btn) {
                 btn.setAttribute('data-year', String(year));
@@ -724,21 +764,20 @@ function initTimelineCanvas() {
             const lm = lineMeta(lineId);
             const parts = [];
             parts.push(
-                `<button type="button" role="menuitem" class="timeline-ctx-create-event w-full text-left px-2 py-2 text-sm font-medium hover:bg-base-200">Создать событие</button>`,
+                `<button type="button" role="menuitem" class="timeline-ctx-item timeline-ctx-create-event">Создать событие</button>`,
             );
             parts.push(
-                `<button type="button" role="menuitem" class="timeline-ctx-edit-line w-full text-left px-2 py-2 text-sm font-medium hover:bg-base-200">Редактировать линию</button>`,
+                `<button type="button" role="menuitem" class="timeline-ctx-item timeline-ctx-edit-line">Редактировать</button>`,
             );
             if (lm.isMain) {
                 parts.push(
-                    `<button type="button" role="menuitem" disabled class="w-full text-left px-2 py-2 text-sm font-medium opacity-50 cursor-not-allowed">Удалить линию (основная)</button>`,
+                    `<button type="button" role="menuitem" disabled class="timeline-ctx-item timeline-ctx-delete-line-disabled" title="Основную линию мира нельзя удалить">Удалить линию</button>`,
                 );
             } else {
                 parts.push(
-                    `<button type="button" role="menuitem" class="timeline-ctx-delete-line w-full text-left px-2 py-2 text-sm font-medium hover:bg-base-200 text-error">Удалить линию</button>`,
+                    `<button type="button" role="menuitem" class="timeline-ctx-item timeline-ctx-item--danger timeline-ctx-delete-line">Удалить линию</button>`,
                 );
             }
-            parts.push(metaLine);
             contextMenu.innerHTML = parts.join('');
             const evBtn = contextMenu.querySelector('.timeline-ctx-create-event');
             if (evBtn) {
@@ -760,23 +799,17 @@ function initTimelineCanvas() {
             const parts = [];
             eventIds.forEach((eid) => {
                 const idStr = String(eid);
-                const evRow = eventsConfigForMenu.find((e) => Number(e.id) === Number(eid));
-                const titleShort = evRow?.title
-                    ? escapeHtml(String(evRow.title).slice(0, 56))
-                    : `Событие #${idStr}`;
-                parts.push(`<div class="px-2 pt-2 text-[10px] text-base-content/70 max-w-[14rem] truncate">${titleShort}</div>`);
                 parts.push(
-                    `<button type="button" role="menuitem" class="timeline-ctx-edit-event w-full text-left px-2 py-1.5 text-sm font-medium hover:bg-base-200" data-event-id="${idStr}">Редактировать</button>`,
+                    `<button type="button" role="menuitem" class="timeline-ctx-item timeline-ctx-edit-event" data-event-id="${idStr}">Редактировать</button>`,
                 );
                 parts.push(
-                    `<button type="button" role="menuitem" class="timeline-ctx-delete-event w-full text-left px-2 py-1.5 text-sm font-medium hover:bg-base-200 text-error" data-event-id="${idStr}">Удалить</button>`,
+                    `<button type="button" role="menuitem" class="timeline-ctx-item timeline-ctx-item--danger timeline-ctx-delete-event" data-event-id="${idStr}">Удалить</button>`,
                 );
             });
-            parts.push(metaEvent);
             contextMenu.innerHTML = parts.join('');
         }
 
-        contextMenu.classList.remove('hidden', 'opacity-0', 'invisible');
+        contextMenu.classList.remove('hidden');
         contextMenu.setAttribute('aria-hidden', 'false');
         contextMenu.style.left = '0';
         contextMenu.style.top = '0';
@@ -836,7 +869,7 @@ function initTimelineCanvas() {
         if (e.button !== 0) {
             return;
         }
-        if (contextMenu && !contextMenu.classList.contains('invisible') && !contextMenu.contains(/** @type {Node} */ (e.target))) {
+        if (contextMenu && !contextMenu.classList.contains('hidden') && !contextMenu.contains(/** @type {Node} */ (e.target))) {
             hideTimelineContextMenu();
         }
     });

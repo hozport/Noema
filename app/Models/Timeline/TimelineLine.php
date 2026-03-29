@@ -3,6 +3,7 @@
 namespace App\Models\Timeline;
 
 use App\Models\Biography\Biography;
+use App\Models\Faction\Faction;
 use App\Models\Worlds\World;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -13,6 +14,7 @@ class TimelineLine extends Model
     protected $fillable = [
         'world_id',
         'source_biography_id',
+        'source_faction_id',
         'name',
         'start_year',
         'end_year',
@@ -41,15 +43,21 @@ class TimelineLine extends Model
         return $this->belongsTo(Biography::class, 'source_biography_id');
     }
 
+    /** Линия, созданная из фракции (если есть). */
+    public function sourceFaction(): BelongsTo
+    {
+        return $this->belongsTo(Faction::class, 'source_faction_id');
+    }
+
     public function events(): HasMany
     {
         return $this->hasMany(TimelineEvent::class, 'timeline_line_id')->orderBy('epoch_year')->orderBy('month')->orderBy('day')->orderBy('id');
     }
 
     /**
-     * Обновляет левую границу по min(годов событий). Правая граница:
-     * — главная линия мира и линии из биографии (extends_to_canvas_end): end_year = null (до конца холста);
-     * — ручные линии с заданным периодом: end_year = max(годов).
+     * Подстраивает границы линии по событиям, не сужая заданный пользователем отрезок.
+     * Левая граница: min(текущий start_year, min(годов событий)).
+     * Правая граница: главная и биография (extends_to_canvas_end) — null; иначе max(текущий end_year, max(годов событий)).
      */
     public function recalculateBoundsFromEvents(): void
     {
@@ -61,12 +69,17 @@ class TimelineLine extends Model
             return;
         }
 
-        $this->start_year = (int) $years->min();
+        $minY = (int) $years->min();
+        $maxY = (int) $years->max();
+        $oldStart = (int) $this->start_year;
+        $oldEnd = $this->end_year !== null ? (int) $this->end_year : null;
+
+        $this->start_year = min($oldStart, $minY);
 
         if ($this->is_main || $this->extends_to_canvas_end) {
             $this->end_year = null;
         } else {
-            $this->end_year = (int) $years->max();
+            $this->end_year = max($oldEnd ?? $maxY, $maxY);
         }
 
         $this->save();

@@ -81,7 +81,7 @@
         <div class="flex items-start justify-between gap-4 mb-6">
             <div class="min-w-0 flex-1">
                 <h1 class="text-[1.875rem] font-semibold text-base-content leading-tight" style="font-family: 'Cormorant Garamond', Georgia, serif;">{{ $biography->name }}</h1>
-                <p class="text-base-content/60 text-lg mt-1">{{ $biography->lifeYearsLabel() }}@if (filled($biography->race)) · {{ $biography->race }}@endif</p>
+                @include('biographies.partials.biography-header-meta', ['world' => $world, 'biography' => $biography])
             </div>
             <div class="flex items-center gap-1 shrink-0 mt-0.5">
                 <a href="{{ route('biographies.index', $world) }}" class="btn btn-ghost btn-square" title="Назад к списку" aria-label="Назад к списку">
@@ -102,6 +102,15 @@
                         <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
                     </svg>
                 </button>
+                <form method="POST" action="{{ route('biographies.destroy', [$world, $biography]) }}" class="inline" onsubmit="return confirm('Удалить эту биографию? Связи с родственниками, друзьями, врагами, фракциями и событиями будут сняты; связанные записи на таймлайне могут быть удалены.');">
+                    @csrf
+                    @method('DELETE')
+                    <button type="submit" class="btn btn-ghost btn-square text-error" title="Удалить биографию" aria-label="Удалить биографию">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                        </svg>
+                    </button>
+                </form>
             </div>
         </div>
 
@@ -139,9 +148,17 @@
                 @if ($biography->relatives->isNotEmpty())
                     <section>
                         <h2 class="text-sm font-medium text-base-content/60 mb-2">Родственные связи</h2>
-                        <ul class="list-disc list-inside text-base-content space-y-1">
+                        <ul class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-x-4 gap-y-2 text-base-content list-none pl-0 m-0">
                             @foreach ($biography->relatives->sortBy('name') as $rel)
-                                <li><a href="{{ route('biographies.show', [$world, $rel]) }}" class="link link-hover">{{ $rel->name }}</a></li>
+                                <li class="min-w-0 flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+                                    @php
+                                        $kinLabel = \App\Support\BiographyKinship::displayLabel($rel->pivot->kinship ?? null, $rel->pivot->kinship_custom ?? null);
+                                    @endphp
+                                    @if ($kinLabel !== '')
+                                        <span class="text-base-content/75 shrink-0">{{ $kinLabel }}:</span>
+                                    @endif
+                                    <a href="{{ route('biographies.show', [$world, $rel]) }}" class="link link-hover break-words">{{ $rel->name }}</a>
+                                </li>
                             @endforeach
                         </ul>
                     </section>
@@ -150,9 +167,9 @@
                 @if ($biography->friends->isNotEmpty())
                     <section>
                         <h2 class="text-sm font-medium text-base-content/60 mb-2">Друзья</h2>
-                        <ul class="list-disc list-inside text-base-content space-y-1">
+                        <ul class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-x-4 gap-y-2 text-base-content list-none pl-0 m-0">
                             @foreach ($biography->friends->sortBy('name') as $f)
-                                <li><a href="{{ route('biographies.show', [$world, $f]) }}" class="link link-hover">{{ $f->name }}</a></li>
+                                <li class="min-w-0"><a href="{{ route('biographies.show', [$world, $f]) }}" class="link link-hover break-words">{{ $f->name }}</a></li>
                             @endforeach
                         </ul>
                     </section>
@@ -161,9 +178,25 @@
                 @if ($biography->enemies->isNotEmpty())
                     <section>
                         <h2 class="text-sm font-medium text-base-content/60 mb-2">Враги</h2>
-                        <ul class="list-disc list-inside text-base-content space-y-1">
+                        <ul class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-x-4 gap-y-2 text-base-content list-none pl-0 m-0">
                             @foreach ($biography->enemies->sortBy('name') as $e)
-                                <li><a href="{{ route('biographies.show', [$world, $e]) }}" class="link link-hover">{{ $e->name }}</a></li>
+                                <li class="min-w-0"><a href="{{ route('biographies.show', [$world, $e]) }}" class="link link-hover break-words">{{ $e->name }}</a></li>
+                            @endforeach
+                        </ul>
+                    </section>
+                @endif
+
+                @if ($socialMembershipFactions->isNotEmpty())
+                    <section>
+                        <h2 class="text-sm font-medium text-base-content/60 mb-2">Состоит в фракции</h2>
+                        <ul class="list-none text-base-content space-y-4 pl-0">
+                            @foreach ($socialMembershipFactions as $mf)
+                                <li class="border border-base-300/60 rounded-none bg-base-200/20 p-4">
+                                    <a href="{{ route('factions.show', [$world, $mf]) }}" class="link link-hover font-medium text-base-content">{{ $mf->name }}</a>
+                                    @if (filled($mf->short_description))
+                                        <p class="text-sm text-base-content/75 mt-2 whitespace-pre-wrap leading-relaxed">{{ $mf->short_description }}</p>
+                                    @endif
+                                </li>
                             @endforeach
                         </ul>
                     </section>
@@ -187,6 +220,10 @@
                     'world' => $world,
                     'allBiographies' => $allBiographiesForForm,
                     'formSuffix' => 'edit',
+                    'raceFactions' => $raceFactions,
+                    'peopleFactions' => $peopleFactions,
+                    'countryFactions' => $countryFactions,
+                    'membershipFactions' => $membershipFactions,
                 ])
                 <div class="mt-6 flex flex-row-reverse flex-wrap gap-2 justify-end">
                     <button type="submit" class="btn btn-primary rounded-none">Сохранить</button>

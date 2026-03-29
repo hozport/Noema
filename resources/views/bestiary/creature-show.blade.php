@@ -162,6 +162,15 @@
                         <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
                     </svg>
                 </button>
+                <form method="POST" action="{{ route('bestiary.creatures.destroy', [$world, $creature]) }}" class="inline" onsubmit="return confirm('Удалить это существо? Связи с другими существами и изображения галереи будут удалены.');">
+                    @csrf
+                    @method('DELETE')
+                    <button type="submit" class="btn btn-ghost btn-square text-error" title="Удалить существо" aria-label="Удалить существо">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                        </svg>
+                    </button>
+                </form>
             </div>
         </div>
 
@@ -256,11 +265,6 @@
                     </section>
                 @endif
 
-                @if ($recentCreatures->isNotEmpty())
-                    <div class="border-t border-base-300 pt-8 mt-2">
-                        @include('bestiary.partials.recent-creatures', ['world' => $world, 'recentCreatures' => $recentCreatures])
-                    </div>
-                @endif
             </div>
         </div>
     </main>

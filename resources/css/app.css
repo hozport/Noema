@@ -34,3 +34,10 @@
     min-height: 120px;
     border-radius: 0 !important;
 }
+
+/* Футер: отступ колонок навигации от логотипа (не зависит от JIT произвольных классов) */
+@media (min-width: 768px) {
+    .footer-nav-columns {
+        padding-left: 100px;
+    }
+}

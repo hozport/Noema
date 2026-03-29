@@ -30,8 +30,8 @@
                     <td>
                         <strong>{{ $bio->name }}</strong>
                         — <em>{{ $bio->lifeYearsLabel() }}</em>
-                        @if (filled($bio->race))
-                            <span> — {{ $bio->race }}</span>
+                        @if (filled($bio->raceLabel()))
+                            <span> — {{ $bio->raceLabel() }}</span>
                         @endif
                     </td>
                 </tr>

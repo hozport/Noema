@@ -16,7 +16,7 @@
 <body>
     <p class="muted">Биографии: {{ $world->name }}</p>
     <h1>{{ $biography->name }}</h1>
-    <p class="years">{{ $biography->lifeYearsLabel() }}@if (filled($biography->race)) — {{ $biography->race }}@endif</p>
+    <p class="years">{{ $biography->lifeYearsLabel() }}@if (($meta = $biography->bioHeaderMetaLine()) !== null) · {{ $meta }}@endif</p>
 
     @if ($biography->pdfImageDataUri())
         <img src="{{ $biography->pdfImageDataUri() }}" alt="" class="hero-img">
@@ -36,7 +36,15 @@
         <h2>Родственные связи</h2>
         <ul>
             @foreach ($biography->relatives->sortBy('name') as $r)
-                <li>{{ $r->name }}</li>
+                <li>
+                    @php
+                        $kl = \App\Support\BiographyKinship::displayLabel($r->pivot->kinship ?? null, $r->pivot->kinship_custom ?? null);
+                    @endphp
+                    @if ($kl !== '')
+                        {{ $kl }}:
+                    @endif
+                    {{ $r->name }}
+                </li>
             @endforeach
         </ul>
     @endif
@@ -57,6 +65,13 @@
                 <li>{{ $e->name }}</li>
             @endforeach
         </ul>
+    @endif
+
+    @if ($socialMembershipFactions->isNotEmpty())
+        <h2>Состоит в фракции</h2>
+        @foreach ($socialMembershipFactions as $mf)
+            <p><strong>{{ $mf->name }}</strong>@if (filled($mf->short_description)) — {{ $mf->short_description }}@endif</p>
+        @endforeach
     @endif
 </body>
 </html>

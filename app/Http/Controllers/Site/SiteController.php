@@ -51,4 +51,9 @@ class SiteController extends Controller
     {
         return view('site.stub', ['title' => __('site.nav.register')]);
     }
+
+    public function svgViewer(): View
+    {
+        return view('site.svg-viewer');
+    }
 }

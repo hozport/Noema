@@ -30,14 +30,7 @@ class BestiaryCreatureController extends Controller
         $speciesSuggestions = $this->speciesSuggestions($world);
         $allCreaturesForForm = $world->creatures()->orderBy('name')->get();
 
-        $recentCreatures = $world->creatures()
-            ->with('world.user')
-            ->where('id', '!=', $creature->id)
-            ->orderByDesc('created_at')
-            ->limit(8)
-            ->get();
-
-        return view('bestiary.creature-show', compact('world', 'creature', 'speciesSuggestions', 'allCreaturesForForm', 'recentCreatures'));
+        return view('bestiary.creature-show', compact('world', 'creature', 'speciesSuggestions', 'allCreaturesForForm'));
     }
 
     public function store(Request $request, World $world)
@@ -127,6 +120,25 @@ class BestiaryCreatureController extends Controller
         return redirect()
             ->route('bestiary.creatures.show', [$world, $creature])
             ->with('success', 'Изменения сохранены.');
+    }
+
+    public function destroy(Request $request, World $world, Creature $creature)
+    {
+        $this->authorizeWorld($world);
+
+        if ($creature->world_id !== $world->id) {
+            abort(404);
+        }
+
+        foreach ($creature->galleryImages as $g) {
+            $this->deletePublicPath($g->path);
+        }
+        $this->deletePublicPath($creature->image_path);
+        $creature->delete();
+
+        return redirect()
+            ->route('bestiary.index', $world)
+            ->with('success', 'Существо удалено.');
     }
 
     public function pdf(World $world, Creature $creature)

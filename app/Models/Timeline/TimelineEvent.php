@@ -3,6 +3,7 @@
 namespace App\Models\Timeline;
 
 use App\Models\Biography\Biography;
+use App\Models\Faction\Faction;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
@@ -47,6 +48,16 @@ class TimelineEvent extends Model
             'biography_timeline_event',
             'timeline_event_id',
             'biography_id'
+        )->withTimestamps();
+    }
+
+    public function factions(): BelongsToMany
+    {
+        return $this->belongsToMany(
+            Faction::class,
+            'faction_timeline_event',
+            'timeline_event_id',
+            'faction_id'
         )->withTimestamps();
     }
 }

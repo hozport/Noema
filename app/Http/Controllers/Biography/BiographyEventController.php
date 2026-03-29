@@ -8,6 +8,7 @@ use App\Http\Requests\Biography\UpdateBiographyEventRequest;
 use App\Models\Biography\Biography;
 use App\Models\Biography\BiographyEvent;
 use App\Models\Worlds\World;
+use App\Services\BiographyTimelineSyncService;
 use Illuminate\Http\JsonResponse;
 
 class BiographyEventController extends Controller
@@ -51,12 +52,22 @@ class BiographyEventController extends Controller
             'breaks_line' => $request->boolean('breaks_line'),
         ]);
 
-        $te = $biographyEvent->timelineEvent()->with('line')->first();
+        $fresh = $biographyEvent->fresh();
+        $te = $fresh->timelineEvent()->with('line')->first();
         if ($te) {
             $line = $te->line;
-            $te->update([
-                'breaks_line' => $line->is_main ? false : (bool) $biographyEvent->breaks_line,
-            ]);
+            $sync = app(BiographyTimelineSyncService::class);
+            $payload = [
+                'title' => $sync->buildTimelineTitleForBiographyEvent($fresh),
+                'breaks_line' => $line->is_main ? false : (bool) $fresh->breaks_line,
+            ];
+            if ($fresh->epoch_year !== null) {
+                $payload['epoch_year'] = (int) $fresh->epoch_year;
+                $payload['month'] = max(1, min(100, (int) $fresh->month));
+                $payload['day'] = max(1, min(100, (int) $fresh->day));
+            }
+            $te->update($payload);
+            $te->line->recalculateBoundsFromEvents();
         }
 
         return response()->json([

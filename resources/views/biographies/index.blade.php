@@ -242,6 +242,10 @@
                     'world' => $world,
                     'allBiographies' => $allBiographies,
                     'formSuffix' => 'create',
+                    'raceFactions' => $raceFactions,
+                    'peopleFactions' => $peopleFactions,
+                    'countryFactions' => $countryFactions,
+                    'membershipFactions' => $membershipFactions,
                 ])
                 <div class="mt-6 flex flex-row-reverse flex-wrap gap-2 justify-end">
                     <button type="submit" class="btn btn-primary rounded-none">Создать</button>

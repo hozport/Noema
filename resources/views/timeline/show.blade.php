@@ -11,9 +11,14 @@
         @vite(['resources/css/app.css', 'resources/js/app.js', 'resources/js/timeline.js'])
     @endif
     <style>
-        .timeline-canvas-inner { min-height: min(55vh, 520px); }
+        /* Высокий холст; горизонтальная полоса прокрутки у нижнего края области (малый нижний паддинг). */
+        .timeline-canvas-inner { min-height: min(72vh, 880px); }
         .timeline-canvas-scroll {
-            padding: 18px 10px 12px;
+            padding: 10px 10px 2px;
+            cursor: grab;
+            user-select: none;
+            -webkit-user-select: none;
+            overflow: auto;
         }
         .timeline-track-svg { display: block; overflow: visible; }
         .timeline-track-row { overflow: visible; }
@@ -26,7 +31,14 @@
             filter: brightness(1.2) drop-shadow(0 0 6px rgba(255, 255, 255, 0.35));
         }
         .timeline-line-hit {
-            cursor: pointer;
+            cursor: grab;
+        }
+        .timeline-canvas-scroll.is-panning {
+            cursor: grabbing !important;
+        }
+        .timeline-canvas-scroll.is-panning .timeline-line-hit,
+        .timeline-canvas-scroll.is-panning .timeline-point-hit {
+            cursor: grabbing !important;
         }
         .timeline-point-tooltip {
             max-width: 18rem;
@@ -54,35 +66,62 @@
             box-shadow: 0 4px 18px -4px rgba(0, 0, 0, 0.45);
             white-space: nowrap;
         }
+        /* Сплошная панель и текст без альфы из темы (полностью перекрывает холст). */
         #timeline-context-menu {
             z-index: 10050;
             min-width: 12rem;
-            padding: 0.35rem 0;
+            padding: 0.25rem 0;
             border-radius: 0;
-            border: 1px solid oklch(var(--b3) / 0.98);
-            background: oklch(var(--b1));
+            opacity: 1 !important;
+            isolation: isolate;
+            border: 1px solid oklch(var(--b3));
+            border: 1px solid oklch(from oklch(var(--b3)) l c h / 1);
+            background-color: oklch(var(--b1));
+            background-color: oklch(from oklch(var(--b1)) l c h / 1);
             box-shadow:
-                0 0 0 1px rgba(0, 0, 0, 0.25),
-                0 18px 48px -8px rgba(0, 0, 0, 0.7);
+                0 0 0 1px rgb(0 0 0 / 0.4),
+                0 18px 48px -8px rgb(0 0 0 / 0.78);
             font-family: ui-sans-serif, system-ui, sans-serif;
+            backdrop-filter: none !important;
+            -webkit-backdrop-filter: none !important;
         }
-        #timeline-context-menu button {
+        #timeline-context-menu .timeline-ctx-item {
             display: block;
             width: 100%;
             text-align: left;
-            padding: 0.45rem 0.85rem;
+            padding: 0.5rem 0.85rem;
             font-size: 0.8125rem;
+            font-weight: 500;
+            font-family: inherit;
+            line-height: 1.35;
             border: none;
-            background: transparent;
-            color: oklch(var(--bc) / 0.98);
             cursor: pointer;
+            opacity: 1 !important;
+            color: oklch(var(--bc));
+            color: oklch(from oklch(var(--bc)) l c h / 1);
+            background-color: oklch(var(--b1));
+            background-color: oklch(from oklch(var(--b1)) l c h / 1);
         }
-        #timeline-context-menu button:hover:not(:disabled) {
-            background: oklch(var(--b2) / 0.98);
+        #timeline-context-menu .timeline-ctx-item:hover:not(:disabled) {
+            background-color: oklch(var(--b2));
+            background-color: oklch(from oklch(var(--b2)) l c h / 1);
         }
-        #timeline-context-menu button:disabled {
-            opacity: 0.65;
+        #timeline-context-menu .timeline-ctx-item--danger {
+            color: oklch(var(--er));
+            color: oklch(from oklch(var(--er)) l c h / 1);
+        }
+        #timeline-context-menu .timeline-ctx-item--danger:hover:not(:disabled) {
+            background-color: oklch(var(--b2));
+            background-color: oklch(from oklch(var(--b2)) l c h / 1);
+        }
+        #timeline-context-menu .timeline-ctx-item:disabled {
             cursor: not-allowed;
+            color: color-mix(in oklch, oklch(var(--bc)) 52%, oklch(var(--b1)) 48%);
+            color: color-mix(in oklch, oklch(from oklch(var(--bc)) l c h / 1) 52%, oklch(from oklch(var(--b1)) l c h / 1) 48%);
+        }
+        #timeline-context-menu .timeline-ctx-item:disabled:hover {
+            background-color: oklch(var(--b1));
+            background-color: oklch(from oklch(var(--b1)) l c h / 1);
         }
         .timeline-dialog {
             position: fixed !important;
@@ -159,13 +198,17 @@
             cursor: pointer;
         }
         .timeline-dialog__close:hover { opacity: 1; }
+        /* Футер ниже первого экрана: main не flex-1, занимает почти 100dvh минус шапку. */
+        body.timeline-page footer {
+            margin-top: 0 !important;
+        }
     </style>
     <script type="application/json" id="timeline-axis-config">{!! json_encode(['tMin' => $visual['tMin'], 'tMax' => $visual['tMax'], 'canvasWidth' => $visual['canvasWidth']], JSON_THROW_ON_ERROR) !!}</script>
 </head>
-<body class="min-h-screen bg-base-100 flex flex-col">
+<body class="min-h-screen bg-base-100 flex flex-col timeline-page">
     @include('site.partials.header')
 
-    <main class="flex-1 flex flex-col min-h-0 w-full">
+    <main class="flex flex-col w-full shrink-0 min-h-[calc(100dvh-5.75rem)]">
         <div class="shrink-0 px-6 pt-6 pb-4 w-full">
         <div class="flex flex-wrap items-start justify-between gap-4 mb-6">
             <div class="min-w-0">
@@ -178,26 +221,45 @@
                         <path d="M19 12H5M12 19l-7-7 7-7"/>
                     </svg>
                 </a>
-                <button type="button" id="timeline-open-line-dialog" class="btn btn-primary btn-sm rounded-none">Создать линию</button>
-                <button type="button" id="timeline-open-event-dialog" class="btn btn-outline btn-sm rounded-none">Создать событие</button>
+                <button type="button" id="timeline-open-line-dialog" class="btn btn-primary btn-sm btn-square shrink-0 rounded-none" title="Создать линию" aria-label="Создать линию">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <circle cx="5" cy="12" r="2.5" fill="currentColor" stroke="none"/>
+                        <path d="M7.5 12h9"/>
+                        <circle cx="19" cy="12" r="2.5" fill="currentColor" stroke="none"/>
+                    </svg>
+                </button>
+                <button type="button" id="timeline-open-event-dialog" class="btn btn-outline btn-sm btn-square shrink-0 rounded-none" title="Создать событие" aria-label="Создать событие">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                        <path d="M16 2v4M8 2v4M3 10h18"/>
+                        <path d="M12 15v6M9 18h6"/>
+                    </svg>
+                </button>
             </div>
         </div>
-
-        <p class="text-sm text-base-content/55 mb-4 shrink-0 max-w-3xl">
-            Ось отображения: <strong class="text-base-content/75">{{ $visual['tMin'] }}…{{ $visual['tMax'] }}</strong> г.
-            (размах данных {{ $visual['dataSpanYears'] }} г., отступ справа {{ $visual['paddingYears'] }} г.;
-            шаг шкалы {{ $visual['rulerStep'] }} г.).
-            Ширина холста {{ $visual['canvasWidth'] }}px — при короткой истории те же пиксели соответствуют меньшему числу лет (масштаб подстраивается под данные).
-            Метка нуля: <strong class="text-base-content/75">{{ $visual['referenceLabel'] }}</strong>.
-        </p>
         </div>
 
         <div class="flex-1 min-h-0 flex flex-col w-full border-y border-base-300/25 bg-base-200/20 rounded-none">
-            <div class="overflow-x-auto flex-1 min-h-0 min-h-[240px] timeline-canvas-scroll cursor-crosshair">
+            <div class="flex-1 min-h-0 min-h-[280px] timeline-canvas-scroll">
                 <div
                     class="timeline-canvas-inner relative flex flex-col justify-end"
                     style="width: {{ $visual['canvasWidth'] }}px"
                 >
+                    <div
+                        class="pointer-events-none absolute left-0 top-0 bottom-0 z-[5] overflow-hidden"
+                        style="width: {{ $visual['canvasWidth'] }}px"
+                        aria-hidden="true"
+                    >
+                        @foreach ($visual['rulerTicks'] as $ty)
+                            @php
+                                $gx = \App\Support\TimelineVisualDemo::yearToX($ty, $visual['tMin'], $visual['tMax'], $visual['canvasWidth']);
+                            @endphp
+                            <div
+                                class="absolute top-0 bottom-0 w-px bg-base-content/[0.07]"
+                                style="left: {{ $gx }}px;"
+                            ></div>
+                        @endforeach
+                    </div>
                     @foreach ($visual['tracks'] as $track)
                         @php
                             $h = $track['kind'] === 'main' ? 56 : 48;
@@ -278,7 +340,7 @@
                                             >×{{ $group['count'] }}</text>
                                         @endif
                                         <circle
-                                            class="timeline-point-hit cursor-pointer"
+                                            class="timeline-point-hit cursor-grab"
                                             cx="{{ $cx }}"
                                             cy="{{ $mid }}"
                                             r="{{ $hitR }}"
@@ -342,7 +404,7 @@
 
     <div id="timeline-point-tooltip" class="timeline-point-tooltip fixed z-[5000] opacity-0 invisible pointer-events-none" role="tooltip"></div>
     <div id="timeline-year-at-cursor" class="pointer-events-none fixed z-[45] hidden opacity-0 invisible" aria-hidden="true">0 г.</div>
-    <div id="timeline-context-menu" class="fixed z-[10050] hidden opacity-0 invisible" role="menu" aria-hidden="true"></div>
+    <div id="timeline-context-menu" class="fixed z-[10050] hidden" role="menu" aria-hidden="true"></div>
 
     @include('timeline.partials.modals', ['world' => $world, 'timelineLines' => $timelineLines, 'timelineEventsForJs' => $timelineEventsForJs])
 

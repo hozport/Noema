@@ -116,13 +116,13 @@
                     </svg>
                     <h3 class="text-lg font-semibold text-base-content">Карты</h3>
                 </a>
-                <a href="{{ route('bestiary.index', $world) }}" class="card card-block bg-base-200 border border-base-300 hover:border-primary/30 transition-colors dashboard-card p-6">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
-                        <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
-                        <path d="M8 7h8"/>
+                <a href="{{ route('factions.index', $world) }}" class="card card-block bg-base-200 border border-base-300 hover:border-primary/30 transition-colors dashboard-card p-6">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+                        <path d="M2 17l10 5 10-5"/>
+                        <path d="M2 12l10 5 10-5"/>
                     </svg>
-                    <h3 class="text-lg font-semibold text-base-content">Бестиарий</h3>
+                    <h3 class="text-lg font-semibold text-base-content">Фракции</h3>
                 </a>
                 <a href="{{ route('biographies.index', $world) }}" class="card card-block bg-base-200 border border-base-300 hover:border-primary/30 transition-colors dashboard-card p-6">
                     <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
@@ -132,6 +132,14 @@
                         <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
                     </svg>
                     <h3 class="text-lg font-semibold text-base-content">Биографии</h3>
+                </a>
+                <a href="{{ route('bestiary.index', $world) }}" class="card card-block bg-base-200 border border-base-300 hover:border-primary/30 transition-colors dashboard-card p-6">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
+                        <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+                        <path d="M8 7h8"/>
+                    </svg>
+                    <h3 class="text-lg font-semibold text-base-content">Бестиарий</h3>
                 </a>
             </div>
         </section>

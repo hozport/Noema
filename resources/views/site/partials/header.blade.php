@@ -11,6 +11,20 @@
             <a href="{{ route('site.about') }}" class="hover:text-base-content transition-colors">{{ __('site.nav.about') }}</a>
             <a href="{{ route('site.documentation') }}" class="hover:text-base-content transition-colors">{{ __('site.nav.documentation') }}</a>
             <a href="{{ route('site.roadmap') }}" class="hover:text-base-content transition-colors">{{ __('site.nav.roadmap') }}</a>
+            <div class="dropdown dropdown-end dropdown-bottom">
+                <div tabindex="0" role="button" class="inline-flex items-center gap-1 cursor-pointer text-base-content/80 hover:text-base-content transition-colors select-none" aria-haspopup="menu" aria-expanded="false">
+                    {{ __('site.nav.tools') }}
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="opacity-70" aria-hidden="true">
+                        <path d="m6 9 6 6 6-6"/>
+                    </svg>
+                </div>
+                {{-- Не использовать class "menu" вместе с dropdown-content: у .menu задан display:flex и ломается скрытие панели в DaisyUI 5 --}}
+                <ul tabindex="-1" role="menu" class="dropdown-content bg-base-100 border border-base-300 rounded-none z-[60] w-52 p-2 shadow-lg mt-1 list-none m-0">
+                    <li role="none">
+                        <a href="{{ route('site.svg-viewer') }}" role="menuitem" class="block px-3 py-2 text-sm rounded-none hover:bg-base-200">{{ __('site.nav.svg_viewer') }}</a>
+                    </li>
+                </ul>
+            </div>
         </nav>
         <div class="flex items-center gap-2 ml-auto sm:ml-0">
             <label for="site-locale" class="sr-only">{{ __('site.header.locale_label') }}</label>

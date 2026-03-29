@@ -73,16 +73,24 @@ final class BiographyTimelineSyncService
         return $this->createTimelineEventFromBiographyEvent($biography, $be, $line);
     }
 
-    private function createTimelineEventFromBiographyEvent(Biography $biography, BiographyEvent $be, TimelineLine $line): TimelineEvent
+    /**
+     * Заголовок события на таймлайне по данным факта биографии (как при первом выкладывании).
+     */
+    public function buildTimelineTitleForBiographyEvent(BiographyEvent $be): string
     {
         $title = $be->title;
         if ($be->year_end !== null && (int) $be->year_end !== (int) $be->epoch_year) {
             $title = $be->title.' ('.(int) $be->epoch_year.'—'.(int) $be->year_end.' г.)';
         }
 
+        return Str::limit($title, 255);
+    }
+
+    private function createTimelineEventFromBiographyEvent(Biography $biography, BiographyEvent $be, TimelineLine $line): TimelineEvent
+    {
         $event = TimelineEvent::query()->create([
             'timeline_line_id' => $line->id,
-            'title' => Str::limit($title, 255),
+            'title' => $this->buildTimelineTitleForBiographyEvent($be),
             'epoch_year' => (int) $be->epoch_year,
             'month' => max(1, min(100, (int) $be->month)),
             'day' => max(1, min(100, (int) $be->day)),
@@ -96,5 +104,28 @@ final class BiographyTimelineSyncService
         $line->recalculateBoundsFromEvents();
 
         return $event;
+    }
+
+    /**
+     * После правки события на таймлайне — обновить исходный факт биографии (заголовок, даты, конец линии).
+     */
+    public function syncLinkedBiographyEventFromTimeline(TimelineEvent $event): void
+    {
+        if ($event->source_type !== BiographyEvent::class || $event->source_id === null) {
+            return;
+        }
+
+        $be = BiographyEvent::query()->find($event->source_id);
+        if ($be === null) {
+            return;
+        }
+
+        $be->update([
+            'title' => Str::limit((string) $event->title, 255),
+            'epoch_year' => (int) $event->epoch_year,
+            'month' => (int) $event->month,
+            'day' => (int) $event->day,
+            'breaks_line' => (bool) $event->breaks_line,
+        ]);
     }
 }

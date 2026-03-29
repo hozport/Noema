@@ -18,11 +18,13 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
+        // WithoutModelEvents отключает User::creating — folder_token нужно задать явно.
         $user = User::updateOrCreate(
             ['email' => 'test@test.test'],
             [
                 'name' => 'Test User',
                 'password' => 'test',
+                'folder_token' => 'testseeduserfolder01',
             ]
         );
 

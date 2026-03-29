@@ -14,8 +14,197 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
+    document.querySelectorAll('[data-bio-kinship-select]').forEach((sel) => {
+        const suffix = sel.getAttribute('data-bio-kinship-select');
+        if (suffix) {
+            initBiographyKinshipUI(sel, suffix);
+        }
+    });
+
+    document.querySelectorAll('[data-bio-faction-other-select]').forEach((sel) => {
+        const suffix = sel.getAttribute('data-bio-faction-other-select');
+        const wrapPrefix = sel.getAttribute('data-bio-faction-other-wrap-prefix');
+        if (suffix && wrapPrefix) {
+            initBiographyFactionOtherToggle(sel, suffix, wrapPrefix);
+        }
+    });
+
     initBiographyEventsBlock();
 });
+
+/**
+ * @param {HTMLSelectElement} sel
+ * @param {string} suffix
+ * @param {string} wrapPrefix id prefix without suffix, e.g. bio-race-other-wrap
+ */
+function initBiographyFactionOtherToggle(sel, suffix, wrapPrefix) {
+    const wrap = document.getElementById(`${wrapPrefix}-${suffix}`);
+    if (!wrap) {
+        return;
+    }
+    function toggle() {
+        if (sel.value === 'other') {
+            wrap.classList.remove('hidden');
+        } else {
+            wrap.classList.add('hidden');
+        }
+    }
+    sel.addEventListener('change', toggle);
+    toggle();
+}
+
+/**
+ * @param {HTMLSelectElement} multiSelect
+ * @param {string} suffix
+ */
+function initBiographyKinshipUI(multiSelect, suffix) {
+    const container = document.getElementById(`bio-rel-kinship-${suffix}`);
+    const labelsEl = document.getElementById(`bio-kinship-labels-${suffix}`);
+    if (!container || !labelsEl) {
+        return;
+    }
+
+    /** @type {Record<string, string>} */
+    let labels = {};
+    try {
+        labels = JSON.parse(labelsEl.textContent || '{}');
+    } catch {
+        return;
+    }
+
+    /** @type {Record<string, string|null>} */
+    let initialKinship = {};
+    /** @type {Record<string, string|null>} */
+    let initialCustom = {};
+    try {
+        initialKinship = JSON.parse(container.dataset.initialKinship || '{}');
+    } catch {
+        initialKinship = {};
+    }
+    try {
+        initialCustom = JSON.parse(container.dataset.initialCustom || '{}');
+    } catch {
+        initialCustom = {};
+    }
+
+    const customKey = 'custom';
+
+    function readPersistedFromDom() {
+        /** @type {Record<string, string>} */
+        const kin = {};
+        /** @type {Record<string, string>} */
+        const cus = {};
+        container.querySelectorAll('select[name^="relative_kinship["]').forEach((s) => {
+            const m = s.name.match(/relative_kinship\[(\d+)\]/);
+            if (m) {
+                kin[m[1]] = s.value;
+            }
+        });
+        container.querySelectorAll('input.bio-rel-kinship-custom-input').forEach((inp) => {
+            const m = inp.name.match(/relative_kinship_custom\[(\d+)\]/);
+            if (m) {
+                cus[m[1]] = inp.value;
+            }
+        });
+
+        return { kin, cus };
+    }
+
+    function toggleCustomInput(row, value) {
+        const inp = row.querySelector('.bio-rel-kinship-custom-input');
+        if (!inp) {
+            return;
+        }
+        if (value === customKey) {
+            inp.classList.remove('hidden');
+            inp.removeAttribute('aria-hidden');
+        } else {
+            inp.classList.add('hidden');
+            inp.setAttribute('aria-hidden', 'true');
+        }
+    }
+
+    function renderRows() {
+        const { kin: prevKin, cus: prevCus } = readPersistedFromDom();
+        const selected = Array.from(multiSelect.selectedOptions);
+        container.innerHTML = '';
+        if (selected.length === 0) {
+            const hint = document.createElement('p');
+            hint.className = 'text-xs text-base-content/50';
+            hint.textContent = 'Выберите родственников в списке выше — здесь появятся поля степени родства.';
+            container.appendChild(hint);
+
+            return;
+        }
+
+        selected.forEach((opt) => {
+            const id = opt.value;
+            const name = opt.textContent || '';
+            const row = document.createElement('div');
+            row.className =
+                'flex flex-wrap items-end gap-x-3 gap-y-2 border-b border-base-300/30 pb-3 last:border-0 last:pb-0';
+            const nameSpan = document.createElement('span');
+            nameSpan.className = 'text-sm font-medium text-base-content shrink-0 min-w-[6rem] max-w-[14rem]';
+            nameSpan.textContent = name;
+
+            const sel = document.createElement('select');
+            sel.name = `relative_kinship[${id}]`;
+            sel.className =
+                'bio-kinship-degree-select select select-bordered select-sm rounded-none bg-base-200 border-base-300 flex-1 min-w-[12rem] max-w-md';
+            sel.setAttribute('aria-label', `Степень родства: ${name}`);
+
+            const emptyOpt = document.createElement('option');
+            emptyOpt.value = '';
+            emptyOpt.textContent = '— Степень родства —';
+            sel.appendChild(emptyOpt);
+
+            Object.keys(labels).forEach((key) => {
+                const o = document.createElement('option');
+                o.value = key;
+                o.textContent = labels[key];
+                sel.appendChild(o);
+            });
+
+            const ik =
+                prevKin[id] ??
+                prevKin[String(id)] ??
+                initialKinship[id] ??
+                initialKinship[String(id)] ??
+                '';
+            const ic =
+                prevCus[id] ?? prevCus[String(id)] ?? initialCustom[id] ?? initialCustom[String(id)] ?? '';
+            if (ik && Object.prototype.hasOwnProperty.call(labels, ik)) {
+                sel.value = ik;
+            }
+
+            const customInp = document.createElement('input');
+            customInp.type = 'text';
+            customInp.name = `relative_kinship_custom[${id}]`;
+            customInp.className =
+                'input input-bordered input-sm rounded-none bg-base-200 border-base-300 flex-1 min-w-[10rem] max-w-md bio-rel-kinship-custom-input';
+            customInp.placeholder = 'Свой вариант';
+            customInp.value = ic !== null && ic !== undefined ? String(ic) : '';
+            customInp.setAttribute('aria-label', `Свой вариант степени родства: ${name}`);
+            if (sel.value !== customKey) {
+                customInp.classList.add('hidden');
+                customInp.setAttribute('aria-hidden', 'true');
+            }
+
+            sel.addEventListener('change', () => {
+                toggleCustomInput(row, sel.value);
+            });
+
+            row.appendChild(nameSpan);
+            row.appendChild(sel);
+            row.appendChild(customInp);
+            container.appendChild(row);
+            toggleCustomInput(row, sel.value);
+        });
+    }
+
+    multiSelect.addEventListener('change', renderRows);
+    renderRows();
+}
 
 function getCsrfToken() {
     return document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
@@ -226,14 +415,18 @@ function initBiographyEventsBlock() {
     }
 
     async function deleteEvent(ev) {
-        if (!confirm('Удалить событие? Если оно было на таймлайне, запись там тоже будет удалена.')) {
+        if (
+            !confirm(
+                'Удалить факт из биографии? Запись на таймлайне останется (связь снимется). Чтобы убрать точку с линии, удалите её в разделе «Таймлайн».',
+            )
+        ) {
             return;
         }
         try {
             await biographyApi(`${updateBase}/${ev.id}`, { method: 'DELETE' });
             events = events.filter((e) => e.id !== ev.id);
             render();
-            announce('Событие удалено.');
+            announce('Факт удалён из биографии.');
         } catch (e) {
             announce(e.message || 'Не удалось удалить', true);
         }

@@ -11,8 +11,19 @@ class BiographyEvent extends Model
 {
     protected static function booted(): void
     {
+        /**
+         * Удаление с таймлайна не трогает факт в биографии.
+         * Удаление факта из биографии удаляет и связанное событие на таймлайне.
+         */
         static::deleting(function (BiographyEvent $e): void {
-            $e->timelineEvent()->delete();
+            $te = $e->timelineEvent()->first();
+            if ($te === null) {
+                return;
+            }
+            $line = $te->line;
+            $te->biographies()->detach();
+            $te->delete();
+            $line->recalculateBoundsFromEvents();
         });
     }
 
