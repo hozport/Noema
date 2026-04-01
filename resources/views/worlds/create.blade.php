@@ -36,6 +36,13 @@
 
     <main style="flex: 1; display: flex; align-items: center; justify-content: center; padding: 4rem 3rem 6rem;">
         <div style="width: 60%; max-width: 900px; min-width: 320px;">
+            <div class="flex justify-end mb-4">
+                <a href="{{ route('worlds.index') }}" class="btn btn-ghost btn-square shrink-0" title="Назад к мирам" aria-label="Назад к мирам">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="M19 12H5M12 19l-7-7 7-7"/>
+                    </svg>
+                </a>
+            </div>
             <form method="POST" action="{{ route('worlds.store') }}" enctype="multipart/form-data" class="create-form" style="display: flex; flex-direction: column; gap: 4rem;">
                 @csrf
 

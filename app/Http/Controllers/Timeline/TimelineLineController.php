@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Timeline;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Timeline\StoreTimelineLineRequest;
+use App\Models\ActivityLog;
 use App\Http\Requests\Timeline\UpdateTimelineLineRequest;
 use App\Models\Timeline\TimelineLine;
 use App\Models\Worlds\World;
@@ -20,7 +21,7 @@ class TimelineLineController extends Controller
         $data = $request->validated();
         $sortOrder = (int) ($world->timelineLines()->where('is_main', false)->max('sort_order') ?? -1) + 1;
 
-        $world->timelineLines()->create([
+        $line = $world->timelineLines()->create([
             'name' => $data['name'],
             'start_year' => $data['start_year'],
             'end_year' => $data['end_year'] !== null && $data['end_year'] !== '' ? (int) $data['end_year'] : null,
@@ -28,6 +29,8 @@ class TimelineLineController extends Controller
             'is_main' => false,
             'sort_order' => $sortOrder,
         ]);
+
+        ActivityLog::record($request->user(), $world, 'timeline.line.created', 'Создана линия таймлайна «'.$line->name.'».', $line);
 
         return redirect()->route('worlds.timeline', $world);
     }
@@ -46,6 +49,8 @@ class TimelineLineController extends Controller
             'color' => $data['color'],
         ]);
 
+        ActivityLog::record($request->user(), $world, 'timeline.line.updated', 'Изменена линия «'.$line->name.'».', $line);
+
         return redirect()->route('worlds.timeline', $world);
     }
 
@@ -62,6 +67,9 @@ class TimelineLineController extends Controller
         if ($line->is_main) {
             abort(403, 'Нельзя удалить основную линию мира.');
         }
+
+        $lineName = $line->name;
+        ActivityLog::record($request->user(), $world, 'timeline.line.deleted', 'Удалена линия «'.$lineName.'».', $line);
 
         $line->delete();
 

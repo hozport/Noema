@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Account;
 
 use App\Http\Controllers\Controller;
+use App\Models\ActivityLog;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -50,6 +51,8 @@ class ProfileController extends Controller
         }
 
         $user->save();
+
+        ActivityLog::record($user, null, 'account.profile.updated', 'Обновлён профиль.', $user);
 
         return redirect()->route('account.profile')->with('success', 'Профиль сохранён.');
     }

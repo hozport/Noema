@@ -1,0 +1,20 @@
+@php
+    $journalTitle = $journalTitle ?? 'Журнал изменений';
+    if (! empty($timelineJournal) && isset($world) && $world) {
+        $href = route('worlds.activity.timeline', $world);
+    } elseif (isset($world) && $world) {
+        $href = route('worlds.activity', $world);
+    } else {
+        $href = route('account.activity');
+    }
+@endphp
+<a href="{{ $href }}" class="btn btn-ghost btn-square shrink-0" title="{{ $journalTitle }}" aria-label="{{ $journalTitle }}">
+    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M8 6h13"/>
+        <path d="M8 12h13"/>
+        <path d="M8 18h13"/>
+        <path d="M3 6h.01"/>
+        <path d="M3 12h.01"/>
+        <path d="M3 18h.01"/>
+    </svg>
+</a>

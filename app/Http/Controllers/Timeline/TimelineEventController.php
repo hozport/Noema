@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Timeline;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Timeline\StoreTimelineEventRequest;
+use App\Models\ActivityLog;
 use App\Http\Requests\Timeline\UpdateTimelineEventRequest;
 use App\Models\Biography\BiographyEvent;
 use App\Models\Faction\FactionEvent;
@@ -36,6 +37,8 @@ class TimelineEventController extends Controller
 
         $event->line->recalculateBoundsFromEvents();
 
+        ActivityLog::record($request->user(), $world, 'timeline.event.created', 'Создано событие «'.$event->title.'».', $event);
+
         return redirect()->route('worlds.timeline', $world);
     }
 
@@ -65,6 +68,8 @@ class TimelineEventController extends Controller
 
         $timelineEvent->line->recalculateBoundsFromEvents();
 
+        ActivityLog::record($request->user(), $world, 'timeline.event.updated', 'Изменено событие «'.$timelineEvent->title.'».', $timelineEvent);
+
         return redirect()->route('worlds.timeline', $world);
     }
 
@@ -79,6 +84,9 @@ class TimelineEventController extends Controller
         }
 
         $line = $timelineEvent->line;
+        $title = $timelineEvent->title;
+        ActivityLog::record($request->user(), $world, 'timeline.event.deleted', 'Удалено событие «'.$title.'».', $timelineEvent);
+
         $timelineEvent->biographies()->detach();
         $timelineEvent->factions()->detach();
         $timelineEvent->delete();

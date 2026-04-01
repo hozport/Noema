@@ -171,13 +171,26 @@
         .story-synopsis-stat-divider + .story-cards-stat {
             margin-top: 0;
         }
+        .noema-markup-view a.noema-entity-link {
+            color: #4f46e5;
+            text-decoration: underline;
+            cursor: help;
+        }
+        .noema-markup-view strong { font-weight: 700; }
+        .noema-markup-view em { font-style: italic; }
+        .noema-markup-view u { text-decoration: underline; }
+        .noema-markup-view s { text-decoration: line-through; }
+        #editModalCmHost .cm-editor { min-height: 12rem; }
+        #editModalCmHost .cm-scroller { max-height: 22rem; }
     </style>
 </head>
 <body class="min-h-screen bg-base-100 flex flex-col">
     @include('site.partials.header')
 
     <main class="flex-1 p-6 max-w-[1344px] w-full mx-auto">
-        <div id="story-page-root" data-world-id="{{ $world->id }}" data-story-id="{{ $story->id }}">
+        <div id="story-page-root" data-world-id="{{ $world->id }}" data-story-id="{{ $story->id }}"
+            data-markup-entities-url="{{ route('worlds.markup.entities', $world) }}"
+            data-markup-resolve-url="{{ route('worlds.markup.resolve', $world) }}">
         <div class="flex items-start justify-between mb-8 gap-4">
             <div class="min-w-0">
                 <h1 class="text-[1.875rem] font-semibold text-base-content leading-tight" style="font-family: 'Cormorant Garamond', Georgia, serif;">{{ $story->name }}</h1>
@@ -204,6 +217,7 @@
                         <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
                     </svg>
                 </button>
+                @include('partials.activity-log-button', ['world' => $world])
             </div>
         </div>
 
@@ -225,7 +239,7 @@
         <div id="story-cards-sortable" class="story-cards-sortable" data-reorder-url="{{ route('cards.reorder', [$world, $story]) }}">
             @foreach ($story->cards as $card)
                 @php
-                    $previewForSearch = $card->content ? Str::limit(str_replace(["\r\n", "\n"], ' ', $card->content), 800) : '';
+                    $previewForSearch = $card->content ? Str::limit(str_replace(["\r\n", "\n"], ' ', $card->getPlainContentForPreview()), 800) : '';
                     $searchBlob = Str::lower($card->displayTitle() . ' ' . $previewForSearch . ' ' . $card->number);
                 @endphp
                 <div class="story-card-wrap card border-0 shadow-none @if($card->is_highlighted) story-card-wrap--highlighted @endif"
@@ -245,7 +259,7 @@
                                 <h3 class="story-card-title-display font-semibold min-w-0 line-clamp-2">{{ $card->displayTitle() }}</h3>
                             </div>
                             @php
-                                $preview = $card->content ? Str::limit(str_replace("\n\n", ' ', $card->content), 100) : '';
+                                $preview = $card->content ? Str::limit(str_replace("\n\n", ' ', $card->getPlainContentForPreview()), 100) : '';
                             @endphp
                             @if ($preview)
                                 <p class="story-card-preview">{{ $preview }}</p>
@@ -334,11 +348,22 @@
                     aria-describedby="editModalTitleInput-desc">
                 <p id="editModalTitleInput-desc" class="text-xs text-base-content/50 mt-1">Необязательно; пустое имя на карточке показывается как «Карточка N». До 255 символов.</p>
                 <p id="editModalTitleCounter" class="text-xs text-right mt-1 tabular-nums" aria-live="polite"></p>
-                <label for="editModalContent" class="block text-sm text-base-content/70 mb-1 mt-4">Содержимое</label>
-                <textarea name="content" id="editModalContent" rows="12" placeholder="Введите текст. Каждый абзац (разделяйте пустой строкой) станет отдельной карточкой при декомпозиции."
-                    class="textarea textarea-bordered w-full rounded-none bg-base-200 border-base-300 resize-none"
-                    aria-describedby="editModalContent-desc"></textarea>
-                <p id="editModalContent-desc" class="text-xs text-base-content/50 mt-1">Каждый абзац (пустая строка между блоками) при декомпозиции станет отдельной карточкой. Мягкий ориентир по объёму — около 100&nbsp;000 знаков.</p>
+                <label for="editModalMarkupView" class="block text-sm text-base-content/70 mb-1 mt-4">Содержимое</label>
+                <input type="hidden" name="content" id="editModalContent" value="" autocomplete="off">
+                <div id="editModalMarkupViewWrap">
+                    <div id="editModalMarkupView" class="noema-markup-view textarea textarea-bordered w-full rounded-none bg-base-200 border-base-300 min-h-[12rem] max-h-[22rem] overflow-auto p-3 text-sm leading-relaxed cursor-text whitespace-pre-wrap" tabindex="0" role="textbox" aria-multiline="true" aria-describedby="editModalContent-desc"></div>
+                    <p class="text-xs text-base-content/50 mt-1">Двойной клик по тексту — режим редактирования с подсветкой и превью. Теги: <code class="text-[0.8rem]">[b][/b]</code> <code class="text-[0.8rem]">[i][/i]</code> <code class="text-[0.8rem]">[u][/u]</code> <code class="text-[0.8rem]">[s][/s]</code>, ссылка <code class="text-[0.8rem]">[link module=M entity=E]…[/link]</code>. Экранирование <code class="text-[0.8rem]">\</code>.</p>
+                </div>
+                <div id="editModalMarkupEditWrap" class="hidden mt-2">
+                    <div id="editModalCmHost" class="rounded-none border border-base-300 bg-base-200 overflow-hidden"></div>
+                    <p class="text-xs text-base-content/60 mt-2 mb-1">Превью</p>
+                    <div id="editModalMarkupPreview" class="textarea textarea-bordered w-full rounded-none bg-base-200 border-base-300 min-h-[6rem] max-h-[14rem] overflow-auto p-3 text-sm leading-relaxed whitespace-pre-wrap"></div>
+                    <button type="button" id="editModalMarkupDone" class="btn btn-ghost btn-sm rounded-none mt-2">Готово к просмотру</button>
+                </div>
+                <p id="editModalContent-desc" class="text-xs text-base-content/50 mt-1">Каждый абзац (пустая строка между блоками) при декомпозиции станет отдельной карточкой. Перенос строки внутри тегов не допускается. Мягкий ориентир по объёму — около 100&nbsp;000 знаков.</p>
+                @error('content')
+                    <p class="text-error text-sm mt-2">{{ $message }}</p>
+                @enderror
                 <p id="editModalContentCounter" class="text-xs text-right mt-1 tabular-nums" aria-live="polite"></p>
                 <div class="mt-6 flex flex-wrap items-center justify-between gap-3">
                     <div class="flex flex-wrap gap-1 items-center">
@@ -379,6 +404,26 @@
         @csrf
         @method('DELETE')
     </form>
+
+    <dialog id="linkEntityModal" class="story-dialog" aria-labelledby="link-entity-heading">
+        <div class="story-dialog__viewport">
+            <div class="story-dialog__scrim" data-link-modal-close tabindex="-1" aria-hidden="true"></div>
+            <div class="story-dialog__panel max-w-md" onclick="event.stopPropagation()">
+                <h2 id="link-entity-heading" class="text-lg font-semibold mb-3 pr-8">Ссылка на сущность</h2>
+                <label for="linkModuleSelect" class="block text-sm text-base-content/70 mb-1">Модуль</label>
+                <select id="linkModuleSelect" class="select select-bordered w-full rounded-none bg-base-200 border-base-300 mb-3"></select>
+                <label for="linkEntitySelect" class="block text-sm text-base-content/70 mb-1">Сущность</label>
+                <select id="linkEntitySelect" class="select select-bordered w-full rounded-none bg-base-200 border-base-300 mb-4"></select>
+                <div class="flex flex-row-reverse gap-2 justify-end">
+                    <button type="button" id="linkModalConfirm" class="btn btn-primary rounded-none">Вставить</button>
+                    <button type="button" id="linkModalCancel" class="btn btn-ghost rounded-none" data-link-modal-close>Отмена</button>
+                </div>
+                <button type="button" class="story-dialog__close" data-link-modal-close aria-label="Закрыть" title="Закрыть">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6L6 18M6 6l12 12"/></svg>
+                </button>
+            </div>
+        </div>
+    </dialog>
 
     @include('site.partials.footer')
 

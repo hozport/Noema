@@ -2,6 +2,9 @@
 
 namespace App\Models\Cards;
 
+use App\Markup\NoemaMarkupHtmlRenderer;
+use App\Markup\NoemaMarkupParser;
+use App\Markup\NoemaMarkupPlainRenderer;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -46,5 +49,29 @@ class Card extends Model
     {
         $this->content = implode("\n\n", array_map('trim', $paragraphs));
         $this->save();
+    }
+
+    /** Безопасный HTML для отображения разметки карточки. */
+    public function getMarkupHtmlContent(): string
+    {
+        if ($this->content === null || $this->content === '') {
+            return '';
+        }
+        $parser = new NoemaMarkupParser;
+        $nodes = $parser->parse((string) $this->content);
+
+        return NoemaMarkupHtmlRenderer::render($nodes);
+    }
+
+    /** Плоский текст без тегов (превью, поиск). */
+    public function getPlainContentForPreview(): string
+    {
+        if ($this->content === null || $this->content === '') {
+            return '';
+        }
+        $parser = new NoemaMarkupParser;
+        $nodes = $parser->parse((string) $this->content);
+
+        return NoemaMarkupPlainRenderer::render($nodes);
     }
 }

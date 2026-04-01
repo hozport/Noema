@@ -9,6 +9,7 @@
         .card h2 { font-size: 12pt; margin: 0 0 0.35em; color: #1a1a1a; }
         .card .num { color: #666; font-size: 9pt; margin-bottom: 0.25em; }
         .card .body { white-space: pre-wrap; line-height: 1.45; }
+        .card .body a.noema-entity-link { color: inherit; text-decoration: underline; pointer-events: none; }
         .empty { color: #888; font-style: italic; }
     </style>
 </head>
@@ -22,7 +23,7 @@
             <div class="num">№ {{ $card->number }}</div>
             <h2>{{ $card->displayTitle() }}</h2>
             @if (filled($card->content))
-                <div class="body">{{ $card->content }}</div>
+                <div class="body">{!! $card->getMarkupHtmlContent() !!}</div>
             @else
                 <p class="empty">(нет текста)</p>
             @endif

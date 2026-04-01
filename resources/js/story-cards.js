@@ -1,5 +1,6 @@
 import Sortable from 'sortablejs';
 import axios from 'axios';
+import { bindCardMarkupEditor } from './markup-editor.js';
 import {
     installFocusTrap,
     bindDialogUnsavedGuard,
@@ -145,9 +146,13 @@ function initStoryPageModals() {
     let editSnapshot = { title: '', content: '' };
     let currentCardId = null;
 
-    const editDirty = () =>
-        (titleInput.value ?? '') !== editSnapshot.title ||
-        (contentInput.value ?? '') !== editSnapshot.content;
+    const editDirty = () => {
+        window.noemaCardMarkup?.syncBeforeSubmit();
+        return (
+            (titleInput.value ?? '') !== editSnapshot.title ||
+            (contentInput.value ?? '') !== editSnapshot.content
+        );
+    };
 
     const editGuardedClose = createGuardedClose(editModal, editDirty);
     bindDialogUnsavedGuard(editModal, editDirty);
@@ -163,6 +168,27 @@ function initStoryPageModals() {
     const contentCounter = document.getElementById('editModalContentCounter');
     bindCounter(titleInput, titleCounter, { soft: 200, maxLength: 255 });
     bindCounter(contentInput, contentCounter, { soft: 90000, hard: 100000 });
+
+    const entitiesUrl = root?.dataset.markupEntitiesUrl;
+    const resolveUrl = root?.dataset.markupResolveUrl;
+    if (entitiesUrl && resolveUrl) {
+        bindCardMarkupEditor({
+            viewWrap: document.getElementById('editModalMarkupViewWrap'),
+            viewEl: document.getElementById('editModalMarkupView'),
+            editWrap: document.getElementById('editModalMarkupEditWrap'),
+            cmHost: document.getElementById('editModalCmHost'),
+            previewEl: document.getElementById('editModalMarkupPreview'),
+            hiddenContent: contentInput,
+            doneBtn: document.getElementById('editModalMarkupDone'),
+            linkModal: document.getElementById('linkEntityModal'),
+            linkModuleSelect: document.getElementById('linkModuleSelect'),
+            linkEntitySelect: document.getElementById('linkEntitySelect'),
+            linkModalConfirm: document.getElementById('linkModalConfirm'),
+            linkModalCancel: document.getElementById('linkModalCancel'),
+            entitiesUrl,
+            resolveUrl,
+        });
+    }
 
     const onEditInput = () => {
         if (!currentCardId) {
@@ -244,6 +270,15 @@ function initStoryPageModals() {
             title: titleInput.value,
             content: contentInput.value,
         };
+
+        if (window.noemaCardMarkup) {
+            window.noemaCardMarkup.syncFromServer(contentInput.value);
+        } else {
+            const ve = document.getElementById('editModalMarkupView');
+            if (ve) {
+                ve.textContent = contentInput.value || '';
+            }
+        }
 
         updateCounter(titleInput, titleCounter, { soft: 200, maxLength: 255 });
         updateCounter(contentInput, contentCounter, { soft: 90000, hard: 100000 });

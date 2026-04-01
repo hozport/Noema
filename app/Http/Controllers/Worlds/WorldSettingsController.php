@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Worlds;
 
 use App\Http\Controllers\Controller;
+use App\Models\ActivityLog;
 use App\Models\Worlds\World;
 use App\Services\WorldReferencePointSyncService;
 use Illuminate\Http\RedirectResponse;
@@ -68,6 +69,8 @@ class WorldSettingsController extends Controller
         $world->save();
 
         $this->referencePointSync->sync($world);
+
+        ActivityLog::record($request->user(), $world, 'world.updated', 'Обновлены настройки мира «'.$world->name.'».', $world);
 
         return redirect()->route('worlds.dashboard', $world)
             ->with('success', 'Параметры мира сохранены.');

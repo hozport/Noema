@@ -187,11 +187,14 @@
                         {{ $world->name }}
                     </p>
                 </div>
-                <a href="{{ route('worlds.connections', $world) }}" class="btn btn-ghost btn-square shrink-0 mt-0.5" title="К списку досок" aria-label="К списку досок">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                        <path d="M19 12H5M12 19l-7-7 7-7"/>
-                    </svg>
-                </a>
+                <div class="flex items-center gap-1 shrink-0 mt-0.5">
+                    <a href="{{ route('worlds.connections', $world) }}" class="btn btn-ghost btn-square" title="К списку досок" aria-label="К списку досок">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <path d="M19 12H5M12 19l-7-7 7-7"/>
+                        </svg>
+                    </a>
+                    @include('partials.activity-log-button', ['world' => $world])
+                </div>
             </div>
         </div>
 

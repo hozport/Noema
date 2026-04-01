@@ -3,6 +3,8 @@
 use App\Http\Controllers\Account\NoemaSettingsController;
 use App\Http\Controllers\Account\ProfileController;
 use App\Http\Controllers\Account\TeamController;
+use App\Http\Controllers\Account\WorldsListDisplayController;
+use App\Http\Controllers\Activity\ActivityLogController;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Bestiary\BestiaryController;
 use App\Http\Controllers\Bestiary\BestiaryCreatureController;
@@ -16,6 +18,7 @@ use App\Http\Controllers\Faction\FactionEventController;
 use App\Http\Controllers\Faction\FactionProfileController;
 use App\Http\Controllers\Faction\FactionsController;
 use App\Http\Controllers\Faction\FactionTimelineController;
+use App\Http\Controllers\Timeline\TimelineClearController;
 use App\Http\Controllers\Timeline\TimelineController;
 use App\Http\Controllers\Timeline\TimelineEventController;
 use App\Http\Controllers\Timeline\TimelineLineController;
@@ -26,6 +29,7 @@ use App\Http\Controllers\Worlds\WorldDashboardController;
 use App\Http\Controllers\Worlds\WorldMapsController;
 use App\Http\Controllers\Worlds\WorldsController;
 use App\Http\Controllers\Worlds\WorldSettingsController;
+use App\Http\Controllers\Markup\MarkupEntityController;
 use Illuminate\Support\Facades\Route;
 
 require __DIR__.'/site.php';
@@ -42,6 +46,8 @@ Route::middleware('auth')->group(function () {
     Route::prefix('account')->name('account.')->group(function () {
         Route::get('/profile', [ProfileController::class, 'show'])->name('profile');
         Route::put('/profile', [ProfileController::class, 'update'])->name('profile.update');
+        Route::get('/activity', [ActivityLogController::class, 'account'])->name('activity');
+        Route::put('/worlds-display', [WorldsListDisplayController::class, 'update'])->name('worlds-display.update');
         Route::get('/team', [TeamController::class, 'show'])->name('team');
         Route::get('/settings', [NoemaSettingsController::class, 'show'])->name('settings');
     });
@@ -51,6 +57,10 @@ Route::middleware('auth')->group(function () {
     Route::post('/worlds', [CreateWorldController::class, 'store'])->name('worlds.store');
     Route::delete('/worlds/{world}', [WorldsController::class, 'destroy'])->name('worlds.destroy');
     Route::get('/worlds/{world}', [WorldDashboardController::class, 'show'])->name('worlds.dashboard');
+    Route::get('/worlds/{world}/activity/timeline', [ActivityLogController::class, 'worldTimeline'])->name('worlds.activity.timeline');
+    Route::get('/worlds/{world}/activity', [ActivityLogController::class, 'world'])->name('worlds.activity');
+    Route::get('/worlds/{world}/markup/entities', [MarkupEntityController::class, 'entities'])->name('worlds.markup.entities');
+    Route::post('/worlds/{world}/markup/resolve', [MarkupEntityController::class, 'resolve'])->name('worlds.markup.resolve');
     Route::put('/worlds/{world}', [WorldSettingsController::class, 'update'])->name('worlds.update');
     Route::get('/worlds/{world}/connections/timeline-lines', [ConnectionsBoardController::class, 'timelineLines'])->name('worlds.connections.data.timeline-lines');
     Route::get('/worlds/{world}/connections/timeline-lines/{line}/events', [ConnectionsBoardController::class, 'timelineLineEvents'])->name('worlds.connections.data.timeline-line-events');
@@ -71,6 +81,7 @@ Route::middleware('auth')->group(function () {
     Route::put('/worlds/{world}/maps/sprites/{worldMapSprite}', [WorldMapsController::class, 'updateSprite'])->name('worlds.maps.sprites.update');
     Route::delete('/worlds/{world}/maps/sprites/{worldMapSprite}', [WorldMapsController::class, 'destroySprite'])->name('worlds.maps.sprites.destroy');
     Route::get('/worlds/{world}/timeline', [TimelineController::class, 'show'])->name('worlds.timeline');
+    Route::post('/worlds/{world}/timeline/clear', [TimelineClearController::class, 'store'])->name('worlds.timeline.clear');
     Route::post('/worlds/{world}/timeline/lines', [TimelineLineController::class, 'store'])->name('timeline.lines.store');
     Route::put('/worlds/{world}/timeline/lines/{line}', [TimelineLineController::class, 'update'])->name('timeline.lines.update');
     Route::delete('/worlds/{world}/timeline/lines/{line}', [TimelineLineController::class, 'destroy'])->name('timeline.lines.destroy');

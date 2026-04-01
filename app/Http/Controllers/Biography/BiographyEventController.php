@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Biography;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Biography\StoreBiographyEventRequest;
+use App\Models\ActivityLog;
 use App\Http\Requests\Biography\UpdateBiographyEventRequest;
 use App\Models\Biography\Biography;
 use App\Models\Biography\BiographyEvent;
@@ -27,6 +28,8 @@ class BiographyEventController extends Controller
             'body' => $data['body'] ?? null,
             'breaks_line' => $request->boolean('breaks_line'),
         ]);
+
+        ActivityLog::record($request->user(), $world, 'biography.event.created', 'В биографии «'.$biography->name.'» добавлено событие «'.$event->title.'».', $event);
 
         return response()->json([
             'ok' => true,
@@ -70,6 +73,8 @@ class BiographyEventController extends Controller
             $te->line->recalculateBoundsFromEvents();
         }
 
+        ActivityLog::record($request->user(), $world, 'biography.event.updated', 'В биографии «'.$biography->name.'» изменено событие «'.$biographyEvent->title.'».', $biographyEvent);
+
         return response()->json([
             'ok' => true,
             'event' => $this->eventPayload($biographyEvent->fresh()),
@@ -82,6 +87,9 @@ class BiographyEventController extends Controller
         if ((int) $biographyEvent->biography_id !== (int) $biography->id) {
             abort(404);
         }
+
+        $title = $biographyEvent->title;
+        ActivityLog::record(auth()->user(), $world, 'biography.event.deleted', 'Удалено событие «'.$title.'» в биографии «'.$biography->name.'».', $biographyEvent);
 
         $biographyEvent->delete();
 

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Faction;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Faction\CreateFactionTimelineLineRequest;
+use App\Models\ActivityLog;
 use App\Http\Requests\Faction\PushFactionEventToTimelineRequest;
 use App\Models\Faction\Faction;
 use App\Models\Faction\FactionEvent;
@@ -11,6 +12,7 @@ use App\Models\Timeline\TimelineLine;
 use App\Models\Worlds\World;
 use App\Services\FactionTimelineSyncService;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
 
 class FactionTimelineController extends Controller
@@ -33,6 +35,8 @@ class FactionTimelineController extends Controller
             ]);
         }
 
+        ActivityLog::record($request->user(), $world, 'faction.timeline.line_created', 'Для фракции «'.$faction->name.'» создана линия на таймлайне.', $line);
+
         return response()->json([
             'ok' => true,
             'message' => 'Линия создана, события размещены на таймлайне.',
@@ -40,7 +44,7 @@ class FactionTimelineController extends Controller
         ]);
     }
 
-    public function removeLine(World $world, Faction $faction): JsonResponse
+    public function removeLine(Request $request, World $world, Faction $faction): JsonResponse
     {
         $this->authorizeFaction($world, $faction);
 
@@ -59,6 +63,8 @@ class FactionTimelineController extends Controller
         if ($line->is_main) {
             abort(403);
         }
+
+        ActivityLog::record($request->user(), $world, 'faction.timeline.line_removed', 'С таймлайна убрана линия фракции «'.$faction->name.'».', $line);
 
         $line->delete();
 
@@ -83,6 +89,8 @@ class FactionTimelineController extends Controller
                 'push' => $e->getMessage(),
             ]);
         }
+
+        ActivityLog::record($request->user(), $world, 'faction.timeline.event_pushed', 'Событие «'.$fe->title.'» (фракция «'.$faction->name.'») вынесено на таймлайн.', $fe);
 
         return response()->json([
             'ok' => true,

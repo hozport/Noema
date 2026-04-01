@@ -29,6 +29,14 @@
         dialog.world-settings-dialog[open]::backdrop { background: rgba(0,0,0,0.6); }
         dialog.world-settings-dialog[open] .modal-backdrop { position: absolute !important; inset: 0 !important; z-index: -1 !important; }
         .world-settings-dialog .modal-box { max-width: 32rem; width: 100%; }
+        dialog.delete-world-dashboard-dialog:not([open]) { display: none !important; }
+        dialog.delete-world-dashboard-dialog[open] {
+            position: fixed !important; top: 0 !important; left: 0 !important; right: 0 !important; bottom: 0 !important;
+            width: 100vw !important; height: 100vh !important; margin: 0 !important; padding: 1rem !important;
+            display: flex !important; align-items: center !important; justify-content: center !important;
+            z-index: 1000 !important; overflow-y: auto !important;
+        }
+        dialog.delete-world-dashboard-dialog[open]::backdrop { background: rgba(0,0,0,0.6); }
     </style>
 </head>
 <body class="min-h-screen bg-base-100 flex flex-col">
@@ -49,13 +57,13 @@
                     <p class="text-base-content/70 mt-2 max-w-2xl">{{ $world->annotation }}</p>
                 @endif
             </div>
-            <div class="flex items-center gap-1 shrink-0 mt-0.5">
+            <div class="flex flex-wrap items-center gap-1 shrink-0 mt-0.5 justify-end">
                 <a href="{{ route('worlds.index') }}" class="btn btn-ghost btn-square shrink-0" title="Назад к мирам" aria-label="Назад к мирам">
                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                         <path d="M19 12H5M12 19l-7-7 7-7"/>
                     </svg>
                 </a>
-                <button type="button" class="btn btn-ghost btn-square shrink-0" title="Скачать PDF" disabled>
+                <button type="button" class="btn btn-ghost btn-square shrink-0 opacity-80 hover:opacity-100" title="Экспорт в PDF — скоро" aria-label="PDF (скоро)">
                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                         <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
                         <polyline points="7 10 12 15 17 10"/>
@@ -68,6 +76,12 @@
                         <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
                     </svg>
                 </button>
+                <button type="button" class="btn btn-ghost btn-square shrink-0 text-error hover:bg-error/15" title="Удалить мир" aria-label="Удалить мир" onclick="document.getElementById('deleteWorldFromDashboardModal').showModal()">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/>
+                    </svg>
+                </button>
+                @include('partials.activity-log-button', ['world' => $world])
             </div>
         </div>
 
@@ -145,6 +159,26 @@
         </section>
     </main>
 
+    <dialog id="deleteWorldFromDashboardModal" class="modal modal-middle delete-world-dashboard-dialog">
+        <div class="modal-box rounded-none border border-base-300 bg-base-200 shadow-2xl p-6 md:p-8 max-w-lg w-full">
+            <h2 class="font-display text-xl font-semibold text-base-content mb-2">Удалить мир</h2>
+            <p class="text-sm text-base-content/70 mb-4">Мир «{{ $world->name }}» будет скрыт из списка. Чтобы подтвердить, введите слово <span class="font-mono text-base-content">УДАЛИТЬ</span> заглавными буквами.</p>
+            <form method="POST" action="{{ route('worlds.destroy', $world) }}" id="deleteWorldFromDashboardForm">
+                @csrf
+                @method('DELETE')
+                <div class="form-control w-full mb-4">
+                    <label class="label py-1" for="delete-world-dashboard-confirm"><span class="label-text">Подтверждение</span></label>
+                    <input type="text" id="delete-world-dashboard-confirm" autocomplete="off" class="input input-bordered w-full rounded-none bg-base-100 border-base-300 font-mono" placeholder="УДАЛИТЬ">
+                </div>
+                <div class="modal-action flex flex-wrap gap-2 justify-end">
+                    <button type="button" class="btn btn-ghost rounded-none" onclick="document.getElementById('deleteWorldFromDashboardModal').close()">Отмена</button>
+                    <button type="submit" id="delete-world-dashboard-submit" class="btn btn-error rounded-none" disabled>Удалить</button>
+                </div>
+            </form>
+        </div>
+        <form method="dialog" class="modal-backdrop"><button type="submit" class="cursor-default opacity-0 absolute inset-0 w-full h-full" aria-label="Закрыть">close</button></form>
+    </dialog>
+
     <dialog id="worldSettingsModal" class="modal modal-middle world-settings-dialog">
         <div class="modal-box rounded-none border border-base-300 bg-base-200 shadow-2xl p-6 md:p-8">
             <h2 class="font-display text-xl font-semibold text-base-content mb-1">Настройки мира</h2>
@@ -220,6 +254,20 @@
                 const f = this.files && this.files[0];
                 if (!f || !f.type.startsWith('image/') || !currentImg) return;
                 currentImg.src = URL.createObjectURL(f);
+            });
+
+            const delModal = document.getElementById('deleteWorldFromDashboardModal');
+            const delInput = document.getElementById('delete-world-dashboard-confirm');
+            const delSubmit = document.getElementById('delete-world-dashboard-submit');
+            const EXPECTED = 'УДАЛИТЬ';
+            function syncDeleteConfirm() {
+                if (!delInput || !delSubmit) return;
+                delSubmit.disabled = delInput.value !== EXPECTED;
+            }
+            delInput?.addEventListener('input', syncDeleteConfirm);
+            delModal?.addEventListener('close', function () {
+                if (delInput) delInput.value = '';
+                syncDeleteConfirm();
             });
         })();
     </script>

@@ -126,6 +126,12 @@ return [
         'emergency' => [
             'path' => storage_path('logs/laravel.log'),
         ],
+        
+        'redis' => [
+            'driver' => 'custom',
+            'via' => App\Logging\RedisLogger::class,
+            'level' => env('LOG_LEVEL', 'debug'),
+        ],
 
     ],
 

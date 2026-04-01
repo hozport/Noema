@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Biography;
 
 use App\Http\Controllers\Controller;
+use App\Models\ActivityLog;
 use App\Models\Biography\Biography;
 use App\Models\Faction\Faction;
 use App\Models\Timeline\TimelineLine;
@@ -135,6 +136,8 @@ class BiographyProfileController extends Controller
 
         $this->syncRelations($biography, $validated);
 
+        ActivityLog::record($request->user(), $world, 'biography.created', 'Создана биография «'.$biography->name.'».', $biography);
+
         return redirect()
             ->route('biographies.show', [$world, $biography])
             ->with('success', 'Биография создана.');
@@ -178,6 +181,8 @@ class BiographyProfileController extends Controller
 
         $this->syncRelations($biography, $validated);
 
+        ActivityLog::record($request->user(), $world, 'biography.updated', 'Обновлена биография «'.$biography->name.'».', $biography);
+
         return redirect()
             ->route('biographies.show', [$world, $biography])
             ->with('success', 'Изменения сохранены.');
@@ -192,6 +197,9 @@ class BiographyProfileController extends Controller
         }
 
         $this->deletePublicPath($biography->image_path);
+        $name = $biography->name;
+        ActivityLog::record($request->user(), $world, 'biography.deleted', 'Удалена биография «'.$name.'».', $biography);
+
         $biography->delete();
 
         return redirect()

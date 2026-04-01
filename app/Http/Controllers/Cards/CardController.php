@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\Cards;
 
 use App\Http\Controllers\Controller;
+use App\Markup\NoemaMarkupValidator;
+use App\Models\ActivityLog;
 use App\Models\Cards\Card;
 use App\Models\Cards\Story;
 use App\Models\Worlds\World;
@@ -30,6 +32,8 @@ class CardController extends Controller
             Card::where('id', $cardId)->where('story_id', $story->id)->update(['number' => $index + 1]);
         }
 
+        ActivityLog::record($request->user(), $world, 'cards.reordered', 'Изменён порядок карточек в истории «'.$story->name.'».', $story);
+
         return response()->json(['ok' => true]);
     }
 
@@ -51,11 +55,29 @@ class CardController extends Controller
         }
 
         if ($request->exists('content')) {
-            $updates['content'] = $validated['content'] ?: null;
+            $raw = $validated['content'] ?? null;
+            if ($raw !== null && $raw !== '') {
+                $markupErrors = NoemaMarkupValidator::validate($raw);
+                if ($markupErrors !== []) {
+                    $message = implode(' ', $markupErrors);
+                    if ($request->expectsJson()) {
+                        return response()->json([
+                            'message' => $message,
+                            'errors' => ['content' => $markupErrors],
+                        ], 422);
+                    }
+
+                    return redirect()->back()
+                        ->withErrors(['content' => $message])
+                        ->withInput();
+                }
+            }
+            $updates['content'] = $raw ?: null;
         }
 
         if ($updates !== []) {
             $card->update($updates);
+            ActivityLog::record($request->user(), $world, 'card.updated', 'Обновлена карточка в истории «'.$card->story->name.'».', $card);
         }
 
         if ($request->expectsJson()) {
@@ -94,6 +116,8 @@ class CardController extends Controller
 
         $story->renumberCards();
 
+        ActivityLog::record(auth()->user(), $world, 'card.decomposed', 'Декомпозиция карточки в истории «'.$story->name.'».', $story);
+
         return redirect()->back()->with('success', 'Карточка декомпозирована.');
     }
 
@@ -102,6 +126,8 @@ class CardController extends Controller
         $this->authorizeCard($world, $card);
 
         $story = $card->story;
+        ActivityLog::record(auth()->user(), $world, 'card.deleted', 'Удалена карточка в истории «'.$story->name.'».', $card);
+
         $card->delete();
         $story->renumberCards();
 
@@ -122,6 +148,8 @@ class CardController extends Controller
         }
 
         $highlightedId = $story->cards()->where('is_highlighted', true)->value('id');
+
+        ActivityLog::record(auth()->user(), $world, 'card.highlight.updated', 'Изменена подсветка карточки в истории «'.$story->name.'».', $card);
 
         if (request()->expectsJson()) {
             return response()->json([

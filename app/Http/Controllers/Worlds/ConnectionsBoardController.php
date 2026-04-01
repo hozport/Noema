@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Worlds;
 
 use App\Http\Controllers\Controller;
+use App\Models\ActivityLog;
 use App\Models\Bestiary\Creature;
 use App\Models\Biography\Biography;
 use App\Models\Cards\Card;
@@ -163,6 +164,8 @@ class ConnectionsBoardController extends Controller
             'y' => $data['y'],
         ]);
 
+        ActivityLog::record($request->user(), $world, 'connections.node.created', 'На доске «'.$connectionBoard->name.'» добавлен блок.', $node);
+
         return response()->json([
             'node' => $this->serializeNode($node, $world),
         ]);
@@ -187,6 +190,8 @@ class ConnectionsBoardController extends Controller
             'y' => $validated['y'],
         ]);
 
+        ActivityLog::record($request->user(), $world, 'connections.node.updated', 'На доске «'.$connectionBoard->name.'» перемещён блок.', $node);
+
         return response()->json([
             'node' => $this->serializeNode($node->fresh(), $world),
         ]);
@@ -200,6 +205,8 @@ class ConnectionsBoardController extends Controller
         if ($node->connection_board_id !== $connectionBoard->id) {
             abort(404);
         }
+
+        ActivityLog::record($request->user(), $world, 'connections.node.deleted', 'На доске «'.$connectionBoard->name.'» удалён блок.', $node);
 
         $node->delete();
 
@@ -248,6 +255,10 @@ class ConnectionsBoardController extends Controller
             ['meta' => null],
         );
 
+        if ($edge->wasRecentlyCreated) {
+            ActivityLog::record($request->user(), $world, 'connections.edge.created', 'На доске «'.$connectionBoard->name.'» добавлена связь между блоками.', $edge);
+        }
+
         return response()->json([
             'edge' => [
                 'id' => $edge->id,
@@ -265,6 +276,8 @@ class ConnectionsBoardController extends Controller
         if ($edge->connection_board_id !== $connectionBoard->id) {
             abort(404);
         }
+
+        ActivityLog::record($request->user(), $world, 'connections.edge.deleted', 'На доске «'.$connectionBoard->name.'» удалена связь.', $edge);
 
         $edge->delete();
 

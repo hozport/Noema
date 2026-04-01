@@ -171,6 +171,7 @@
                         </svg>
                     </button>
                 </form>
+                @include('partials.activity-log-button', ['world' => $world])
             </div>
         </div>
 

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Cards;
 
 use App\Http\Controllers\Controller;
+use App\Models\ActivityLog;
 use App\Models\Cards\Story;
 use App\Models\Worlds\World;
 use Dompdf\Dompdf;
@@ -77,6 +78,8 @@ class StoryController extends Controller
             ]);
         }
 
+        ActivityLog::record($request->user(), $world, 'story.created', 'Создана история «'.$story->name.'».', $story);
+
         return redirect()->route('cards.show', [$world, $story]);
     }
 
@@ -126,6 +129,8 @@ class StoryController extends Controller
                 ? trim($validated['synopsis'])
                 : null,
         ]);
+
+        ActivityLog::record($request->user(), $world, 'story.updated', 'Обновлена история «'.$story->name.'».', $story);
 
         return redirect()->route('cards.show', [$world, $story])->with('success', 'Настройки истории сохранены.');
     }

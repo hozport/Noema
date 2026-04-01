@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Worlds;
 
 use App\Http\Controllers\Controller;
+use App\Models\ActivityLog;
 use App\Services\TimelineBootstrapService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -45,6 +46,8 @@ class CreateWorldController extends Controller
         ]);
 
         TimelineBootstrapService::bootstrap($world);
+
+        ActivityLog::record($user, $world, 'world.created', 'Создан мир «'.$world->name.'».', $world);
 
         return redirect()->route('worlds.dashboard', $world);
     }

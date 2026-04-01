@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Faction;
 
 use App\Http\Controllers\Controller;
+use App\Models\ActivityLog;
 use App\Models\Biography\Biography;
 use App\Models\Faction\Faction;
 use App\Models\Timeline\TimelineLine;
@@ -110,6 +111,8 @@ class FactionProfileController extends Controller
 
         $this->syncRelations($faction, $validated);
 
+        ActivityLog::record($request->user(), $world, 'faction.created', 'Создана фракция «'.$faction->name.'».', $faction);
+
         return redirect()
             ->route('factions.show', [$world, $faction])
             ->with('success', 'Фракция создана.');
@@ -143,6 +146,8 @@ class FactionProfileController extends Controller
 
         $this->syncRelations($faction, $validated);
 
+        ActivityLog::record($request->user(), $world, 'faction.updated', 'Обновлена фракция «'.$faction->name.'».', $faction);
+
         return redirect()
             ->route('factions.show', [$world, $faction])
             ->with('success', 'Изменения сохранены.');
@@ -157,6 +162,9 @@ class FactionProfileController extends Controller
         }
 
         $this->deletePublicPath($faction->image_path);
+        $name = $faction->name;
+        ActivityLog::record($request->user(), $world, 'faction.deleted', 'Удалена фракция «'.$name.'».', $faction);
+
         $faction->delete();
 
         return redirect()

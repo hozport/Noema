@@ -15,27 +15,20 @@
                         На данной странице представлены созданные вами Миры. Выберите один из них, чтобы перейти к Дашборду этого Мира.
                     </p>
                 </div>
-                <div class="flex items-center gap-1 shrink-0">
-                    <a href="{{ route('account.profile') }}" class="btn btn-ghost btn-square rounded-none" title="Профиль" aria-label="Профиль">
+                <div class="flex flex-wrap items-center justify-end gap-1 shrink-0">
+                    <a href="{{ route('worlds.create') }}" class="btn btn-primary btn-square rounded-none shrink-0" title="Создать мир" aria-label="Создать мир">
                         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
-                            <circle cx="12" cy="7" r="4"/>
+                            <circle cx="12" cy="12" r="10"/>
+                            <path d="M12 8v8M8 12h8"/>
                         </svg>
                     </a>
-                    <a href="{{ route('account.team') }}" class="btn btn-ghost btn-square rounded-none" title="Команда" aria-label="Команда">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
-                            <circle cx="9" cy="7" r="4"/>
-                            <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
-                            <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
-                        </svg>
-                    </a>
-                    <a href="{{ route('account.settings') }}" class="btn btn-ghost btn-square rounded-none" title="Настройки" aria-label="Настройки">
+                    <button type="button" class="btn btn-ghost btn-square rounded-none" title="Настройки отображения" aria-label="Настройки отображения" onclick="document.getElementById('worldsListDisplayModal').showModal()">
                         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                             <circle cx="12" cy="12" r="3"/>
                             <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
                         </svg>
-                    </a>
+                    </button>
+                    @include('partials.activity-log-button', ['journalTitle' => 'Общий журнал'])
                 </div>
             </div>
         </div>
@@ -44,14 +37,6 @@
             <div class="world-cards-grid mb-12">
                 @foreach ($worlds as $world)
                     <div class="world-card bg-base-200 border border-base-300 hover:border-primary/30 transition-colors rounded-none overflow-hidden flex flex-col relative">
-                        <button type="button"
-                            class="world-card-delete btn btn-ghost btn-square btn-sm text-error hover:bg-error/20"
-                            title="Удалить мир"
-                            onclick="event.stopPropagation(); openDeleteWorldModal({{ $world->id }}, {{ json_encode($world->name) }})">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/>
-                            </svg>
-                        </button>
                         <div class="world-card-inner flex flex-col flex-1 min-h-0">
                             @if ($world->imageUrl())
                                 <div class="world-card-img-wrap shrink-0">
@@ -81,16 +66,28 @@
             </a>
         </div>
 
-    <dialog id="deleteWorldModal" class="modal modal-middle">
+    @php
+        $worldsSortCurrent = $worldsListSort ?? \App\Models\User::WORLDS_SORT_UPDATED_AT;
+    @endphp
+    <dialog id="worldsListDisplayModal" class="modal modal-middle">
         <div class="modal-box modal-styled rounded-none">
-            <h2 class="text-xl font-semibold mb-4">Удалить мир?</h2>
-            <p class="text-base-content/80 mb-2">Действительно ли вы хотите удалить мир «<span id="deleteWorldModalName"></span>»?</p>
-            <p class="text-sm text-base-content/60 mb-4">Мир будет скрыт из списка; данные в базе сохранятся.</p>
-            <form id="deleteWorldForm" method="POST" class="modal-action flex flex-row-reverse flex-wrap gap-2 justify-end">
+            <h2 class="text-xl font-semibold mb-1">Настройки отображения</h2>
+            <p class="text-sm text-base-content/60 mb-6">Порядок карточек на этой странице.</p>
+            <form method="POST" action="{{ route('account.worlds-display.update') }}" class="space-y-4">
                 @csrf
-                @method('DELETE')
-                <button type="submit" class="btn btn-error rounded-none">Удалить</button>
-                <button type="button" class="btn btn-ghost rounded-none" onclick="deleteWorldModal.close()">Отмена</button>
+                @method('PUT')
+                <div class="form-control w-full">
+                    <label class="label py-1" for="worlds-list-sort"><span class="label-text">Последовательность</span></label>
+                    <select id="worlds-list-sort" name="worlds_list_sort" class="select select-bordered w-full rounded-none bg-base-100 border-base-300">
+                        <option value="{{ \App\Models\User::WORLDS_SORT_ALPHABET }}" @selected($worldsSortCurrent === \App\Models\User::WORLDS_SORT_ALPHABET)>По алфавиту</option>
+                        <option value="{{ \App\Models\User::WORLDS_SORT_CREATED_AT }}" @selected($worldsSortCurrent === \App\Models\User::WORLDS_SORT_CREATED_AT)>По дате создания</option>
+                        <option value="{{ \App\Models\User::WORLDS_SORT_UPDATED_AT }}" @selected($worldsSortCurrent === \App\Models\User::WORLDS_SORT_UPDATED_AT)>По дате последнего обновления</option>
+                    </select>
+                </div>
+                <div class="modal-action flex flex-row-reverse flex-wrap gap-2 justify-end pt-2">
+                    <button type="submit" class="btn btn-primary rounded-none">Сохранить</button>
+                    <button type="button" class="btn btn-ghost rounded-none" onclick="document.getElementById('worldsListDisplayModal').close()">Отмена</button>
+                </div>
             </form>
         </div>
         <form method="dialog" class="modal-backdrop"><button type="submit">close</button></form>
@@ -105,13 +102,6 @@
             height: 340px !important; min-height: 340px !important; max-height: 340px !important;
             flex-shrink: 0 !important;
             border-radius: 0 !important;
-        }
-        .world-card-delete {
-            position: absolute !important;
-            top: 6px !important;
-            right: 6px !important;
-            left: auto !important;
-            z-index: 30 !important;
         }
         .world-card-inner { min-height: 0; }
         .world-card-title {
@@ -178,14 +168,3 @@
     </style>
 @endpush
 
-@push('scripts')
-    <script>
-        const deleteWorldModal = document.getElementById('deleteWorldModal');
-        const deleteWorldForm = document.getElementById('deleteWorldForm');
-        function openDeleteWorldModal(id, name) {
-            document.getElementById('deleteWorldModalName').textContent = name;
-            deleteWorldForm.action = '{{ url('/worlds') }}/' + id;
-            deleteWorldModal.showModal();
-        }
-    </script>
-@endpush

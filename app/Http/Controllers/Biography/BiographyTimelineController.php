@@ -5,12 +5,14 @@ namespace App\Http\Controllers\Biography;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Biography\CreateBiographyTimelineLineRequest;
 use App\Http\Requests\Biography\PushBiographyEventToTimelineRequest;
+use App\Models\ActivityLog;
 use App\Models\Biography\Biography;
 use App\Models\Biography\BiographyEvent;
 use App\Models\Timeline\TimelineLine;
 use App\Models\Worlds\World;
 use App\Services\BiographyTimelineSyncService;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
 
 class BiographyTimelineController extends Controller
@@ -33,6 +35,8 @@ class BiographyTimelineController extends Controller
             ]);
         }
 
+        ActivityLog::record($request->user(), $world, 'biography.timeline.line_created', 'Для биографии «'.$biography->name.'» создана линия на таймлайне.', $line);
+
         return response()->json([
             'ok' => true,
             'message' => 'Линия создана, события размещены на таймлайне.',
@@ -44,7 +48,7 @@ class BiographyTimelineController extends Controller
      * Удаляет линию таймлайна, созданную из этой биографии (события на линии исчезают с таймлайна;
      * записи в биографии и сами события биографии не удаляются).
      */
-    public function removeLine(World $world, Biography $biography): JsonResponse
+    public function removeLine(Request $request, World $world, Biography $biography): JsonResponse
     {
         $this->authorizeBiography($world, $biography);
 
@@ -63,6 +67,8 @@ class BiographyTimelineController extends Controller
         if ($line->is_main) {
             abort(403);
         }
+
+        ActivityLog::record($request->user(), $world, 'biography.timeline.line_removed', 'С таймлайна убрана линия биографии «'.$biography->name.'».', $line);
 
         $line->delete();
 
@@ -87,6 +93,8 @@ class BiographyTimelineController extends Controller
                 'push' => $e->getMessage(),
             ]);
         }
+
+        ActivityLog::record($request->user(), $world, 'biography.timeline.event_pushed', 'Событие «'.$be->title.'» (биография «'.$biography->name.'») вынесено на таймлайн.', $be);
 
         return response()->json([
             'ok' => true,

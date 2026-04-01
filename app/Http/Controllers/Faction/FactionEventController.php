@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Faction;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Faction\StoreFactionEventRequest;
+use App\Models\ActivityLog;
 use App\Http\Requests\Faction\UpdateFactionEventRequest;
 use App\Models\Faction\Faction;
 use App\Models\Faction\FactionEvent;
@@ -27,6 +28,8 @@ class FactionEventController extends Controller
             'body' => $data['body'] ?? null,
             'breaks_line' => $request->boolean('breaks_line'),
         ]);
+
+        ActivityLog::record($request->user(), $world, 'faction.event.created', 'Во фракции «'.$faction->name.'» добавлено событие «'.$event->title.'».', $event);
 
         return response()->json([
             'ok' => true,
@@ -70,6 +73,8 @@ class FactionEventController extends Controller
             $te->line->recalculateBoundsFromEvents();
         }
 
+        ActivityLog::record($request->user(), $world, 'faction.event.updated', 'Во фракции «'.$faction->name.'» изменено событие «'.$factionEvent->title.'».', $factionEvent);
+
         return response()->json([
             'ok' => true,
             'event' => $this->eventPayload($factionEvent->fresh()),
@@ -82,6 +87,9 @@ class FactionEventController extends Controller
         if ((int) $factionEvent->faction_id !== (int) $faction->id) {
             abort(404);
         }
+
+        $title = $factionEvent->title;
+        ActivityLog::record(auth()->user(), $world, 'faction.event.deleted', 'Удалено событие «'.$title.'» во фракции «'.$faction->name.'».', $factionEvent);
 
         $factionEvent->delete();
 

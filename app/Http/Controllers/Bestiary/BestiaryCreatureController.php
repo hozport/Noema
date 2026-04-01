@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Bestiary;
 
 use App\Http\Controllers\Controller;
+use App\Models\ActivityLog;
 use App\Models\Bestiary\Creature;
 use App\Models\Bestiary\CreatureGallery;
 use App\Models\Worlds\World;
@@ -66,6 +67,8 @@ class BestiaryCreatureController extends Controller
             return $creature;
         });
 
+        ActivityLog::record($request->user(), $world, 'bestiary.creature.created', 'В бестиарий добавлено существо «'.$creature->name.'».', $creature);
+
         return redirect()
             ->route('bestiary.creatures.show', [$world, $creature])
             ->with('success', 'Существо создано.');
@@ -117,6 +120,8 @@ class BestiaryCreatureController extends Controller
             $this->storeGalleryUploads($request, $world, $creature);
         });
 
+        ActivityLog::record($request->user(), $world, 'bestiary.creature.updated', 'Обновлено существо «'.$creature->name.'».', $creature);
+
         return redirect()
             ->route('bestiary.creatures.show', [$world, $creature])
             ->with('success', 'Изменения сохранены.');
@@ -134,6 +139,9 @@ class BestiaryCreatureController extends Controller
             $this->deletePublicPath($g->path);
         }
         $this->deletePublicPath($creature->image_path);
+        $name = $creature->name;
+        ActivityLog::record($request->user(), $world, 'bestiary.creature.deleted', 'Удалено существо «'.$name.'».', $creature);
+
         $creature->delete();
 
         return redirect()

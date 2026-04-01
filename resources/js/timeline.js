@@ -1,6 +1,8 @@
 /**
  * Таймлайн: перекрестье, контекстное меню (линия / событие / холст), модалки создания и редактирования.
  */
+import html2canvas from 'html2canvas';
+
 function readAxisConfig() {
     const el = document.getElementById('timeline-axis-config');
     if (!el?.textContent) {
@@ -966,7 +968,44 @@ function initTimelineCanvas() {
     }, true);
 }
 
+function initTimelineJpgExport() {
+    const btn = document.getElementById('timeline-export-jpg');
+    const root = document.getElementById('timeline-jpg-export-root');
+    if (!btn || !root) {
+        return;
+    }
+    btn.addEventListener('click', async () => {
+        const prevDisabled = btn.disabled;
+        btn.disabled = true;
+        try {
+            const scale = Math.min(3, Math.max(2, window.devicePixelRatio || 2));
+            const canvas = await html2canvas(root, {
+                scale,
+                useCORS: true,
+                logging: false,
+                backgroundColor: null,
+            });
+            const url = canvas.toDataURL('image/jpeg', 0.92);
+            const a = document.createElement('a');
+            const meta = readTimelinePageMeta();
+            const id = meta.worldId || 'world';
+            a.href = url;
+            a.download = `timeline-${id}.jpg`;
+            a.rel = 'noopener';
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+        } catch (e) {
+            console.error(e);
+            window.alert('Не удалось сохранить изображение. Попробуйте ещё раз.');
+        } finally {
+            btn.disabled = prevDisabled;
+        }
+    });
+}
+
 document.addEventListener('DOMContentLoaded', () => {
     initTimelineCanvas();
     initTimelineModals();
+    initTimelineJpgExport();
 });

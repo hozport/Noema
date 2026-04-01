@@ -21,6 +21,12 @@ class User extends Authenticatable
      *
      * @var list<string>
      */
+    public const WORLDS_SORT_ALPHABET = 'alphabet';
+
+    public const WORLDS_SORT_CREATED_AT = 'created_at';
+
+    public const WORLDS_SORT_UPDATED_AT = 'updated_at';
+
     protected $fillable = [
         'name',
         'display_name',
@@ -29,6 +35,7 @@ class User extends Authenticatable
         'email',
         'password',
         'folder_token',
+        'worlds_list_sort',
     ];
 
     /**

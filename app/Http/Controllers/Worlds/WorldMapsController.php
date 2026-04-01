@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Worlds;
 
 use App\Http\Controllers\Controller;
+use App\Models\ActivityLog;
 use App\Models\Worlds\World;
 use App\Models\Worlds\WorldMapSprite;
 use Illuminate\Http\JsonResponse;
@@ -52,6 +53,8 @@ class WorldMapsController extends Controller
             'pos_y' => $validated['pos_y'],
         ]);
 
+        ActivityLog::record($request->user(), $world, 'map.sprite.created', 'На карту добавлен объект (спрайт).', $sprite);
+
         return response()->json([
             'id' => $sprite->id,
             'sprite_path' => $sprite->sprite_path,
@@ -78,6 +81,8 @@ class WorldMapsController extends Controller
             'pos_y' => $validated['pos_y'],
         ]);
 
+        ActivityLog::record($request->user(), $world, 'map.sprite.updated', 'Изменено положение объекта на карте.', $worldMapSprite);
+
         return response()->json([
             'id' => $worldMapSprite->id,
             'sprite_path' => $worldMapSprite->sprite_path,
@@ -93,6 +98,8 @@ class WorldMapsController extends Controller
         if ($worldMapSprite->world_id !== $world->id) {
             abort(404);
         }
+
+        ActivityLog::record($request->user(), $world, 'map.sprite.deleted', 'С карты удалён объект.', $worldMapSprite);
 
         $worldMapSprite->delete();
 

@@ -202,6 +202,14 @@
         body.timeline-page footer {
             margin-top: 0 !important;
         }
+        dialog.timeline-clear-dialog:not([open]) { display: none !important; }
+        dialog.timeline-clear-dialog[open] {
+            position: fixed !important; top: 0 !important; left: 0 !important; right: 0 !important; bottom: 0 !important;
+            width: 100vw !important; height: 100vh !important; margin: 0 !important; padding: 1rem !important;
+            display: flex !important; align-items: center !important; justify-content: center !important;
+            z-index: 1000 !important; overflow-y: auto !important;
+        }
+        dialog.timeline-clear-dialog[open]::backdrop { background: rgba(0,0,0,0.6); }
     </style>
     <script type="application/json" id="timeline-axis-config">{!! json_encode(['tMin' => $visual['tMin'], 'tMax' => $visual['tMax'], 'canvasWidth' => $visual['canvasWidth']], JSON_THROW_ON_ERROR) !!}</script>
 </head>
@@ -210,17 +218,29 @@
 
     <main class="flex flex-col w-full shrink-0 min-h-[calc(100dvh-5.75rem)]">
         <div class="shrink-0 px-6 pt-6 pb-4 w-full">
+        @if (session('success'))
+            <div role="alert" class="alert alert-success rounded-none mb-4 max-w-2xl">
+                <span>{{ session('success') }}</span>
+            </div>
+        @endif
         <div class="flex flex-wrap items-start justify-between gap-4 mb-6">
             <div class="min-w-0">
                 <h1 class="text-[1.875rem] font-semibold text-base-content leading-tight" style="font-family: 'Cormorant Garamond', Georgia, serif;">Таймлайн</h1>
                 <p class="text-base-content/60 mt-1">{{ $world->name }}</p>
             </div>
-            <div class="flex flex-wrap items-center gap-2 shrink-0 mt-0.5">
+            <div class="flex flex-wrap items-center gap-2 shrink-0 mt-0.5 justify-end">
                 <a href="{{ route('worlds.dashboard', $world) }}" class="btn btn-ghost btn-square shrink-0" title="Назад в дашборд" aria-label="Назад в дашборд">
                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                         <path d="M19 12H5M12 19l-7-7 7-7"/>
                     </svg>
                 </a>
+                <button type="button" id="timeline-export-jpg" class="btn btn-ghost btn-square shrink-0" title="Сохранить холст в JPG" aria-label="Сохранить в JPG">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                        <circle cx="8.5" cy="8.5" r="1.5"/>
+                        <path d="M21 15l-5-5L5 21"/>
+                    </svg>
+                </button>
                 <button type="button" id="timeline-open-line-dialog" class="btn btn-primary btn-sm btn-square shrink-0 rounded-none" title="Создать линию" aria-label="Создать линию">
                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                         <circle cx="5" cy="12" r="2.5" fill="currentColor" stroke="none"/>
@@ -235,6 +255,12 @@
                         <path d="M12 15v6M9 18h6"/>
                     </svg>
                 </button>
+                <button type="button" class="btn btn-ghost btn-square shrink-0 text-error hover:bg-error/15" title="Очистить таймлайн" aria-label="Очистить таймлайн" onclick="document.getElementById('timelineClearModal').showModal()">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/>
+                    </svg>
+                </button>
+                @include('partials.activity-log-button', ['world' => $world, 'timelineJournal' => true, 'journalTitle' => 'Журнал'])
             </div>
         </div>
         </div>
@@ -242,6 +268,7 @@
         <div class="flex-1 min-h-0 flex flex-col w-full border-y border-base-300/25 bg-base-200/20 rounded-none">
             <div class="flex-1 min-h-0 min-h-[280px] timeline-canvas-scroll">
                 <div
+                    id="timeline-jpg-export-root"
                     class="timeline-canvas-inner relative flex flex-col justify-end"
                     style="width: {{ $visual['canvasWidth'] }}px"
                 >
@@ -405,6 +432,19 @@
     <div id="timeline-point-tooltip" class="timeline-point-tooltip fixed z-[5000] opacity-0 invisible pointer-events-none" role="tooltip"></div>
     <div id="timeline-year-at-cursor" class="pointer-events-none fixed z-[45] hidden opacity-0 invisible" aria-hidden="true">0 г.</div>
     <div id="timeline-context-menu" class="fixed z-[10050] hidden" role="menu" aria-hidden="true"></div>
+
+    <dialog id="timelineClearModal" class="modal modal-middle timeline-clear-dialog">
+        <div class="modal-box rounded-none border border-base-300 bg-base-200 shadow-2xl p-6 md:p-8 max-w-lg w-full">
+            <h2 class="font-display text-xl font-semibold text-base-content mb-2">Очистить таймлайн</h2>
+            <p class="text-sm text-base-content/70 mb-4">Будут удалены все дополнительные линии и все события на основной линии, кроме маркера точки отсчёта. Сам таймлайн остаётся.</p>
+            <form method="POST" action="{{ route('worlds.timeline.clear', $world) }}" class="modal-action flex flex-row-reverse flex-wrap gap-2 justify-end">
+                @csrf
+                <button type="submit" class="btn btn-error rounded-none">Очистить</button>
+                <button type="button" class="btn btn-ghost rounded-none" onclick="document.getElementById('timelineClearModal').close()">Отмена</button>
+            </form>
+        </div>
+        <form method="dialog" class="modal-backdrop"><button type="submit" class="cursor-default opacity-0 absolute inset-0 w-full h-full" aria-label="Закрыть">close</button></form>
+    </dialog>
 
     @include('timeline.partials.modals', ['world' => $world, 'timelineLines' => $timelineLines, 'timelineEventsForJs' => $timelineEventsForJs])
 
