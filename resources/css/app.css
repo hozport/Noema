@@ -41,3 +41,25 @@
         padding-left: 100px;
     }
 }
+
+/* Ссылки на сущности Noema (подсказка по hover): пунктирное подчёркивание */
+.noema-markup-view a.noema-entity-link {
+    color: var(--color-accent, #7c3aed);
+    text-decoration: underline;
+    text-decoration-style: dotted;
+    text-underline-offset: 3px;
+    cursor: help;
+}
+
+.noema-markup-view strong {
+    font-weight: 700;
+}
+.noema-markup-view em {
+    font-style: italic;
+}
+.noema-markup-view u {
+    text-decoration: underline;
+}
+.noema-markup-view s {
+    text-decoration: line-through;
+}

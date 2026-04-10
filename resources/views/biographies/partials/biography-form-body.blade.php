@@ -171,15 +171,20 @@
     class="file-input file-input-bordered w-full rounded-none bg-base-200 border-base-300 @error('image') input-error @enderror">
 @error('image')<p class="text-error text-sm mt-1">{{ $message }}</p>@enderror
 
-<label for="bio-short-{{ $suffix }}" class="block text-sm text-base-content/70 mb-1 mt-4">Краткое описание</label>
-<textarea name="short_description" id="bio-short-{{ $suffix }}" rows="4"
-    class="textarea textarea-bordered w-full rounded-none bg-base-200 border-base-300 resize-y min-h-[5rem] @error('short_description') textarea-error @enderror">{{ old('short_description', optional($biography)->short_description) }}</textarea>
-@error('short_description')<p class="text-error text-sm mt-1">{{ $message }}</p>@enderror
-
-<label for="bio-full-{{ $suffix }}" class="block text-sm text-base-content/70 mb-1 mt-4">Полное описание</label>
-<textarea name="full_description" id="bio-full-{{ $suffix }}" rows="8"
-    class="textarea textarea-bordered w-full rounded-none bg-base-200 border-base-300 resize-y min-h-[10rem] @error('full_description') textarea-error @enderror">{{ old('full_description', optional($biography)->full_description) }}</textarea>
-@error('full_description')<p class="text-error text-sm mt-1">{{ $message }}</p>@enderror
+@include('partials.noema-markup-field', [
+    'name' => 'short_description',
+    'baseId' => 'bio-short-'.$suffix,
+    'label' => 'Краткое описание',
+    'value' => old('short_description', optional($biography)->short_description),
+    'mtClass' => 'mt-4',
+])
+@include('partials.noema-markup-field', [
+    'name' => 'full_description',
+    'baseId' => 'bio-full-'.$suffix,
+    'label' => 'Полное описание',
+    'value' => old('full_description', optional($biography)->full_description),
+    'mtClass' => 'mt-4',
+])
 
 <label for="bio-rel-{{ $suffix }}" class="block text-sm text-base-content/70 mb-1 mt-6">Родственные связи</label>
 <select name="relative_ids[]" id="bio-rel-{{ $suffix }}" multiple size="6"

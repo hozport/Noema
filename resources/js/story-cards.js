@@ -1,6 +1,7 @@
 import Sortable from 'sortablejs';
 import axios from 'axios';
 import { bindCardMarkupEditor } from './markup-editor.js';
+import { bindEntityLinkTooltips } from './markup-entity-tooltips.js';
 import {
     installFocusTrap,
     bindDialogUnsavedGuard,
@@ -77,26 +78,46 @@ function scheduleEditDraftSave(worldId, storyId, cardId, title, content) {
 
 function initStoryPageModals() {
     const root = getPageRoot();
-    const worldId = root?.dataset.worldId;
-    const storyId = root?.dataset.storyId;
-
     const storySettingsModal = document.getElementById('storySettingsModal');
     const editModal = document.getElementById('editModal');
+    const worldId = root?.dataset.worldId ?? editModal?.dataset.worldId;
+    const storyId = root?.dataset.storyId ?? editModal?.dataset.storyId;
+    /** Черновики в sessionStorage только если на странице есть id мира и истории */
+    const canUseDraft = !!(worldId && storyId);
+
     const editForm = document.getElementById('editForm');
     const titleInput = document.getElementById('editModalTitleInput');
     const contentInput = document.getElementById('editModalContent');
+    const highlightField = document.getElementById('editModalHighlightField');
 
     if (storySettingsModal) {
         installFocusTrap(storySettingsModal);
         const nameInput = document.getElementById('storySettingsName');
         const cycleInput = document.getElementById('storySettingsCycle');
         const synopsisInput = document.getElementById('storySettingsSynopsis');
-        let settingsSnapshot = { name: '', cycle: '', synopsis: '' };
+        const cardDisplayModeInput = document.getElementById('storySettingsCardDisplayMode');
+        const cardDisplayToggle = document.getElementById('storySettingsCardDisplayToggle');
+        let settingsSnapshot = { name: '', cycle: '', synopsis: '', cardDisplayMode: 'modal' };
+
+        const syncCardDisplayToggleFromHidden = () => {
+            if (!cardDisplayToggle || !cardDisplayModeInput) {
+                return;
+            }
+            cardDisplayToggle.checked = cardDisplayModeInput.value === 'page';
+        };
+
+        cardDisplayToggle?.addEventListener('change', () => {
+            if (!cardDisplayModeInput) {
+                return;
+            }
+            cardDisplayModeInput.value = cardDisplayToggle.checked ? 'page' : 'modal';
+        });
 
         const settingsDirty = () =>
             (nameInput?.value ?? '') !== settingsSnapshot.name ||
             (cycleInput?.value ?? '') !== settingsSnapshot.cycle ||
-            (synopsisInput?.value ?? '') !== settingsSnapshot.synopsis;
+            (synopsisInput?.value ?? '') !== settingsSnapshot.synopsis ||
+            (cardDisplayModeInput?.value ?? 'modal') !== settingsSnapshot.cardDisplayMode;
 
         const settingsGuardedClose = createGuardedClose(storySettingsModal, settingsDirty);
         bindDialogUnsavedGuard(storySettingsModal, settingsDirty);
@@ -105,10 +126,12 @@ function initStoryPageModals() {
             if (e.target !== storySettingsModal || !storySettingsModal.open) {
                 return;
             }
+            syncCardDisplayToggleFromHidden();
             settingsSnapshot = {
                 name: nameInput?.value ?? '',
                 cycle: cycleInput?.value ?? '',
                 synopsis: synopsisInput?.value ?? '',
+                cardDisplayMode: cardDisplayModeInput?.value ?? 'modal',
             };
             requestAnimationFrame(() => nameInput?.focus());
         });
@@ -133,24 +156,31 @@ function initStoryPageModals() {
                 name: nameInput?.value ?? '',
                 cycle: cycleInput?.value ?? '',
                 synopsis: synopsisInput?.value ?? '',
+                cardDisplayMode: cardDisplayModeInput?.value ?? 'modal',
             };
         });
+
+        syncCardDisplayToggleFromHidden();
     }
 
-    if (!editModal || !editForm || !titleInput || !contentInput || !worldId || !storyId) {
+    /* Не требовать worldId/storyId: иначе при отсутствии #story-page-root или пустых data-* весь модал карточки не инициализируется (в т.ч. редактор разметки). */
+    if (!editModal || !editForm || !titleInput || !contentInput) {
         return;
     }
 
     installFocusTrap(editModal);
 
-    let editSnapshot = { title: '', content: '' };
+    const highlightOnFromField = () => highlightField?.value === '1';
+
+    let editSnapshot = { title: '', content: '', highlightOn: false };
     let currentCardId = null;
 
     const editDirty = () => {
         window.noemaCardMarkup?.syncBeforeSubmit();
         return (
             (titleInput.value ?? '') !== editSnapshot.title ||
-            (contentInput.value ?? '') !== editSnapshot.content
+            (contentInput.value ?? '') !== editSnapshot.content ||
+            highlightOnFromField() !== editSnapshot.highlightOn
         );
     };
 
@@ -169,29 +199,27 @@ function initStoryPageModals() {
     bindCounter(titleInput, titleCounter, { soft: 200, maxLength: 255 });
     bindCounter(contentInput, contentCounter, { soft: 90000, hard: 100000 });
 
-    const entitiesUrl = root?.dataset.markupEntitiesUrl;
-    const resolveUrl = root?.dataset.markupResolveUrl;
-    if (entitiesUrl && resolveUrl) {
-        bindCardMarkupEditor({
-            viewWrap: document.getElementById('editModalMarkupViewWrap'),
-            viewEl: document.getElementById('editModalMarkupView'),
-            editWrap: document.getElementById('editModalMarkupEditWrap'),
-            cmHost: document.getElementById('editModalCmHost'),
-            previewEl: document.getElementById('editModalMarkupPreview'),
-            hiddenContent: contentInput,
-            doneBtn: document.getElementById('editModalMarkupDone'),
-            linkModal: document.getElementById('linkEntityModal'),
-            linkModuleSelect: document.getElementById('linkModuleSelect'),
-            linkEntitySelect: document.getElementById('linkEntitySelect'),
-            linkModalConfirm: document.getElementById('linkModalConfirm'),
-            linkModalCancel: document.getElementById('linkModalCancel'),
-            entitiesUrl,
-            resolveUrl,
-        });
-    }
+    /* Редактор и клик по предпросмотру должны работать всегда; URL сущностей нужны только для ссылок и тултипов */
+    bindCardMarkupEditor({
+        markupEditBoundary: document.getElementById('editModalMarkupBoundary'),
+        viewWrap: document.getElementById('editModalMarkupViewWrap'),
+        viewEl: document.getElementById('editModalMarkupView'),
+        editWrap: document.getElementById('editModalMarkupEditWrap'),
+        cmHost: document.getElementById('editModalCmHost'),
+        hiddenContent: contentInput,
+        linkModal: document.getElementById('linkEntityModal'),
+        linkModuleSelect: document.getElementById('linkModuleSelect'),
+        linkEntitySelect: document.getElementById('linkEntitySelect'),
+        linkModalConfirm: document.getElementById('linkModalConfirm'),
+        linkModalCancel: document.getElementById('linkModalCancel'),
+        entitiesUrl:
+            root?.dataset.markupEntitiesUrl ?? editModal?.dataset.markupEntitiesUrl ?? '',
+        resolveUrl:
+            root?.dataset.markupResolveUrl ?? editModal?.dataset.markupResolveUrl ?? '',
+    });
 
     const onEditInput = () => {
-        if (!currentCardId) {
+        if (!currentCardId || !canUseDraft) {
             return;
         }
         scheduleEditDraftSave(worldId, storyId, currentCardId, titleInput.value, contentInput.value);
@@ -199,9 +227,49 @@ function initStoryPageModals() {
     titleInput.addEventListener('input', onEditInput);
     contentInput.addEventListener('input', onEditInput);
 
-    editForm.addEventListener('submit', () => {
-        if (currentCardId) {
-            clearEditDraft(worldId, storyId, currentCardId);
+    editForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        window.noemaCardMarkup?.syncBeforeSubmit();
+        const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+        const formData = new FormData(editForm);
+        try {
+            const res = await fetch(editForm.action, {
+                method: 'POST',
+                headers: {
+                    Accept: 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                    ...(token ? { 'X-CSRF-TOKEN': token } : {}),
+                },
+                body: formData,
+            });
+            let data = null;
+            try {
+                data = await res.json();
+            } catch (_) {
+                data = null;
+            }
+            if (!res.ok) {
+                if (res.status === 422 && data) {
+                    const fromErrors = data.errors
+                        ? Object.values(data.errors)
+                              .flat()
+                              .filter(Boolean)
+                              .join(' ')
+                        : '';
+                    const msg = fromErrors || data.message || 'Не удалось сохранить карточку.';
+                    window.alert(msg);
+                    return;
+                }
+                window.location.reload();
+                return;
+            }
+            if (currentCardId && canUseDraft) {
+                clearEditDraft(worldId, storyId, currentCardId);
+            }
+            editModal.close();
+            window.location.reload();
+        } catch (_) {
+            window.location.reload();
         }
     });
 
@@ -212,8 +280,7 @@ function initStoryPageModals() {
         content,
         number,
         decomposeUrl,
-        deleteUrl,
-        highlightUrl
+        deleteUrl
     ) {
         const wrap = triggerEl && triggerEl.closest ? triggerEl.closest('.story-card-wrap') : null;
         const cardId = wrap?.dataset.cardId ? String(wrap.dataset.cardId) : null;
@@ -233,14 +300,19 @@ function initStoryPageModals() {
         editForm.action = actionUrl;
         document.getElementById('modalDecomposeForm').action = decomposeUrl;
         document.getElementById('modalDeleteForm').action = deleteUrl;
-        editForm.dataset.highlightUrl = highlightUrl || '';
+
+        if (highlightField) {
+            highlightField.value =
+                wrap && wrap.classList.contains('story-card-wrap--highlighted') ? '1' : '0';
+        }
 
         editSnapshot = {
             title: titleInput.value,
             content: contentInput.value,
+            highlightOn: highlightOnFromField(),
         };
 
-        if (cardId) {
+        if (cardId && canUseDraft) {
             try {
                 const raw = sessionStorage.getItem(draftKey(worldId, storyId, cardId));
                 if (raw) {
@@ -255,7 +327,11 @@ function initStoryPageModals() {
                         ) {
                             titleInput.value = dt;
                             contentInput.value = dc;
-                            editSnapshot = { title: dt, content: dc };
+                            editSnapshot = {
+                                title: dt,
+                                content: dc,
+                                highlightOn: highlightOnFromField(),
+                            };
                         } else {
                             clearEditDraft(worldId, storyId, cardId);
                         }
@@ -269,6 +345,7 @@ function initStoryPageModals() {
         editSnapshot = {
             title: titleInput.value,
             content: contentInput.value,
+            highlightOn: highlightOnFromField(),
         };
 
         if (window.noemaCardMarkup) {
@@ -283,78 +360,34 @@ function initStoryPageModals() {
         updateCounter(titleInput, titleCounter, { soft: 200, maxLength: 255 });
         updateCounter(contentInput, contentCounter, { soft: 90000, hard: 100000 });
 
-        window.syncEditModalHighlightButton(wrap);
+        window.syncEditModalHighlightButton();
         editModal.showModal();
         requestAnimationFrame(() => titleInput.focus());
     };
 
-    window.syncEditModalHighlightButton = function syncEditModalHighlightButton(wrap) {
+    window.syncEditModalHighlightButton = function syncEditModalHighlightButton() {
         const btn = document.getElementById('editModalHighlightBtn');
-        if (!btn) {
+        if (!btn || !highlightField) {
             return;
         }
-        const isHighlighted = wrap && wrap.classList.contains('story-card-wrap--highlighted');
-        const add = btn.querySelector('.edit-modal-highlight-icon-add');
-        const remove = btn.querySelector('.edit-modal-highlight-icon-remove');
-        if (add) {
-            add.style.display = isHighlighted ? 'none' : 'inline-flex';
-        }
-        if (remove) {
-            remove.style.display = isHighlighted ? 'inline-flex' : 'none';
-        }
-        btn.title = isHighlighted
-            ? 'Снять выделение'
-            : 'Выделить: отметить карточку, чтобы быстро найти место остановки';
+        const on = highlightOnFromField();
+        btn.classList.toggle('card-page-pin-btn--active', on);
+        btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+        btn.title = on
+            ? 'Снять закрепление (применится после «Сохранить»)'
+            : 'Закрепить карточку на сетке (применится после «Сохранить»)';
         btn.setAttribute(
             'aria-label',
-            isHighlighted ? 'Снять выделение' : 'Выделить карточку для быстрого поиска'
+            on ? 'Снять закрепление карточки' : 'Закрепить карточку'
         );
     };
 
-    window.highlightCardFromModal = async function highlightCardFromModal() {
-        const url = editForm.dataset.highlightUrl;
-        if (!url) {
+    window.toggleEditModalHighlight = function toggleEditModalHighlight() {
+        if (!highlightField) {
             return;
         }
-        const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
-        try {
-            const res = await fetch(url, {
-                method: 'POST',
-                headers: {
-                    'X-CSRF-TOKEN': token,
-                    Accept: 'application/json',
-                    'Content-Type': 'application/json',
-                },
-            });
-            if (!res.ok) {
-                window.location.reload();
-                return;
-            }
-            const data = await res.json();
-            if (editDirty()) {
-                if (
-                    !window.confirm(
-                        'Остались несохранённые изменения. Закрыть без сохранения?'
-                    )
-                ) {
-                    return;
-                }
-            }
-            editModal.close();
-            document.querySelectorAll('.story-card-wrap').forEach((w) => {
-                w.classList.remove('story-card-wrap--highlighted');
-            });
-            if (data.highlighted_card_id) {
-                const wrap = document.querySelector(
-                    `.story-card-wrap[data-card-id="${data.highlighted_card_id}"]`
-                );
-                if (wrap) {
-                    wrap.classList.add('story-card-wrap--highlighted');
-                }
-            }
-        } catch (e) {
-            window.location.reload();
-        }
+        highlightField.value = highlightField.value === '1' ? '0' : '1';
+        window.syncEditModalHighlightButton();
     };
 
     window.submitModalDecompose = function submitModalDecompose() {
@@ -394,6 +427,12 @@ document.addEventListener('DOMContentLoaded', () => {
     initStoryCardsFilter();
 
     const list = document.getElementById('story-cards-sortable');
+    const pageRoot = getPageRoot();
+    const gridResolveUrl = pageRoot?.dataset.markupResolveUrl;
+    if (gridResolveUrl && list) {
+        bindEntityLinkTooltips(list, gridResolveUrl, document.body);
+    }
+
     if (!list) {
         return;
     }
@@ -436,8 +475,8 @@ document.addEventListener('DOMContentLoaded', () => {
                         wrap.dataset.cardNumber = String(n);
                         const titleEl = wrap.querySelector('.story-card-title-display');
                         const rawTitle = (wrap.getAttribute('data-card-title') ?? '').trim();
-                        if (titleEl && rawTitle === '') {
-                            titleEl.textContent = 'Карточка ' + n;
+                        if (titleEl) {
+                            titleEl.textContent = rawTitle !== '' ? rawTitle : 'Карточка ' + n;
                         }
                     });
                 })

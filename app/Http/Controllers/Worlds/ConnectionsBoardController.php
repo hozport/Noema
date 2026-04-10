@@ -16,6 +16,7 @@ use App\Models\Worlds\ConnectionBoardNode;
 use App\Models\Worlds\World;
 use App\Support\ConnectionBoardNodeKind;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Validation\Rule;
@@ -51,6 +52,21 @@ class ConnectionsBoardController extends Controller
         ];
 
         return view('connections.board', compact('world', 'connectionBoard', 'nodesPayload', 'edgesPayload', 'urls'));
+    }
+
+    public function destroy(Request $request, World $world, ConnectionBoard $connectionBoard): RedirectResponse
+    {
+        $this->authorizeWorld($request, $world);
+        $this->ensureBoardInWorld($connectionBoard, $world);
+
+        $name = $connectionBoard->name;
+        ActivityLog::record($request->user(), $world, 'connections.board.deleted', 'Удалена доска связей «'.$name.'».', $connectionBoard);
+
+        $connectionBoard->delete();
+
+        return redirect()
+            ->route('worlds.connections', $world)
+            ->with('success', 'Доска удалена.');
     }
 
     public function timelineLines(Request $request, World $world): JsonResponse

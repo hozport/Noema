@@ -3,6 +3,8 @@
 namespace Tests\Feature;
 
 use App\Models\ActivityLog;
+use App\Models\Cards\Card;
+use App\Models\Cards\Story;
 use App\Models\User;
 use App\Models\Worlds\World;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -50,5 +52,111 @@ class ActivityLogPageTest extends TestCase
         ]);
 
         $this->actingAs($other)->get(route('worlds.activity', $world))->assertForbidden();
+    }
+
+    public function test_story_activity_lists_only_that_story_and_its_cards(): void
+    {
+        $user = User::factory()->create();
+        $world = World::query()->create([
+            'user_id' => $user->id,
+            'name' => 'Мир W',
+            'onoff' => true,
+        ]);
+        $storyA = Story::query()->create([
+            'world_id' => $world->id,
+            'name' => 'История А',
+        ]);
+        $storyB = Story::query()->create([
+            'world_id' => $world->id,
+            'name' => 'История Б',
+        ]);
+        $cardA = Card::query()->create([
+            'story_id' => $storyA->id,
+            'title' => 'К1',
+            'number' => 1,
+            'content' => null,
+        ]);
+
+        ActivityLog::record($user, $world, 'story.updated', 'Запись по истории А', $storyA);
+        ActivityLog::record($user, $world, 'story.updated', 'Запись по истории Б', $storyB);
+        ActivityLog::record($user, $world, 'card.updated', 'Запись по карточке А', $cardA);
+        ActivityLog::record($user, $world, 'world.updated', 'Настройки мира', $world);
+
+        $response = $this->actingAs($user)->get(route('cards.stories.activity', [$world, $storyA]));
+
+        $response->assertOk();
+        $response->assertSee('Запись по истории А', false);
+        $response->assertSee('Запись по карточке А', false);
+        $response->assertDontSee('Запись по истории Б', false);
+        $response->assertDontSee('Настройки мира', false);
+    }
+
+    public function test_card_activity_lists_only_logs_where_subject_is_that_card(): void
+    {
+        $user = User::factory()->create();
+        $world = World::query()->create([
+            'user_id' => $user->id,
+            'name' => 'Мир W',
+            'onoff' => true,
+        ]);
+        $story = Story::query()->create([
+            'world_id' => $world->id,
+            'name' => 'История',
+        ]);
+        $cardA = Card::query()->create([
+            'story_id' => $story->id,
+            'title' => 'Карточка А',
+            'number' => 1,
+            'content' => null,
+        ]);
+        $cardB = Card::query()->create([
+            'story_id' => $story->id,
+            'title' => 'Карточка Б',
+            'number' => 2,
+            'content' => null,
+        ]);
+
+        ActivityLog::record($user, $world, 'card.updated', 'Правка карточки А', $cardA);
+        ActivityLog::record($user, $world, 'card.updated', 'Правка карточки Б', $cardB);
+        ActivityLog::record($user, $world, 'story.updated', 'Правка истории', $story);
+
+        $response = $this->actingAs($user)->get(route('cards.card.activity', [$world, $story, $cardA]));
+
+        $response->assertOk();
+        $response->assertSee('Правка карточки А', false);
+        $response->assertDontSee('Правка карточки Б', false);
+        $response->assertDontSee('Правка истории', false);
+    }
+
+    public function test_cards_module_activity_filters_logs_and_back_link_points_to_cards_index(): void
+    {
+        $user = User::factory()->create();
+        $world = World::query()->create([
+            'user_id' => $user->id,
+            'name' => 'Мир W',
+            'onoff' => true,
+        ]);
+        $story = Story::query()->create([
+            'world_id' => $world->id,
+            'name' => 'История',
+        ]);
+        $card = Card::query()->create([
+            'story_id' => $story->id,
+            'title' => 'К1',
+            'number' => 1,
+            'content' => null,
+        ]);
+
+        ActivityLog::record($user, $world, 'story.updated', 'Событие истории', $story);
+        ActivityLog::record($user, $world, 'card.updated', 'Событие карточки', $card);
+        ActivityLog::record($user, $world, 'world.updated', 'Настройки мира', $world);
+
+        $response = $this->actingAs($user)->get(route('cards.module.activity', $world));
+
+        $response->assertOk();
+        $response->assertSee('Событие истории', false);
+        $response->assertSee('Событие карточки', false);
+        $response->assertDontSee('Настройки мира', false);
+        $response->assertSee(route('cards.index', $world), false);
     }
 }

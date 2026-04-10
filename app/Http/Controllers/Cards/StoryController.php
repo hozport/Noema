@@ -5,15 +5,24 @@ namespace App\Http\Controllers\Cards;
 use App\Http\Controllers\Controller;
 use App\Models\ActivityLog;
 use App\Models\Cards\Story;
+use App\Models\Worlds\ConnectionBoardNode;
 use App\Models\Worlds\World;
+use App\Support\ConnectionBoardNodeKind;
 use Dompdf\Dompdf;
 use Dompdf\Options;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 
 class StoryController extends Controller
 {
-    private const INITIAL_CARD_COUNT = 4;
+    /** @var list<string> */
+    private const INITIAL_CARD_TITLES = [
+        'Вступление',
+        'Развитие',
+        'Кульминация',
+        'Развязка',
+    ];
 
     public function index(Request $request, World $world)
     {
@@ -68,11 +77,12 @@ class StoryController extends Controller
             'synopsis' => isset($validated['synopsis']) && trim((string) $validated['synopsis']) !== ''
                 ? trim($validated['synopsis'])
                 : null,
+            'card_display_mode' => Story::CARD_DISPLAY_MODAL,
         ]);
 
-        for ($i = 0; $i < self::INITIAL_CARD_COUNT; $i++) {
+        foreach (self::INITIAL_CARD_TITLES as $i => $title) {
             $story->cards()->create([
-                'title' => null,
+                'title' => $title,
                 'content' => null,
                 'number' => $i + 1,
             ]);
@@ -116,6 +126,7 @@ class StoryController extends Controller
             'name' => ['required', 'string', 'max:255'],
             'cycle' => ['nullable', 'string', 'max:255'],
             'synopsis' => ['nullable', 'string'],
+            'card_display_mode' => ['required', 'string', Rule::in([Story::CARD_DISPLAY_MODAL, Story::CARD_DISPLAY_PAGE])],
         ]);
 
         $cycle = isset($validated['cycle']) && trim((string) $validated['cycle']) !== ''
@@ -128,11 +139,38 @@ class StoryController extends Controller
             'synopsis' => isset($validated['synopsis']) && trim((string) $validated['synopsis']) !== ''
                 ? trim($validated['synopsis'])
                 : null,
+            'card_display_mode' => $validated['card_display_mode'],
         ]);
 
         ActivityLog::record($request->user(), $world, 'story.updated', 'Обновлена история «'.$story->name.'».', $story);
 
         return redirect()->route('cards.show', [$world, $story])->with('success', 'Настройки истории сохранены.');
+    }
+
+    public function destroy(Request $request, World $world, Story $story)
+    {
+        $this->authorizeWorld($world);
+
+        if ($story->world_id !== $world->id) {
+            abort(404);
+        }
+
+        $cardIds = $story->cards()->pluck('id');
+        if ($cardIds->isNotEmpty()) {
+            ConnectionBoardNode::query()
+                ->where('kind', ConnectionBoardNodeKind::STORY_CARD)
+                ->whereIn('entity_id', $cardIds)
+                ->delete();
+        }
+
+        $name = $story->name;
+        ActivityLog::record($request->user(), $world, 'story.deleted', 'Удалена история «'.$name.'».', $story);
+
+        $story->delete();
+
+        return redirect()
+            ->route('cards.index', $world)
+            ->with('success', 'История удалена.');
     }
 
     public function pdf(World $world, Story $story)

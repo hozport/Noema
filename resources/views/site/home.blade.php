@@ -79,18 +79,44 @@
                 <div>
                     <h3 class="font-display text-xl sm:text-2xl font-semibold text-base-content mb-3">Таймлайн</h3>
                     <p class="text-base-content/75 leading-relaxed">
-                        Визуальная хронология: линии времени и события на одной шкале. Удобно выстраивать историю мира без «табличного ада».
+                        <span class="underline underline-offset-2">Визуальная хронология:</span> создавай Отрезки времени, наполняй их Событиями, переноси на временную шкалу Биографии и истории Фракций.
+                    </p>
+                    <p class="text-base-content/75 leading-relaxed mt-3">
+                        Хронология твоего Мира всегда под рукой!
                     </p>
                 </div>
-                <div class="min-h-[200px] rounded-none border border-dashed border-base-300/50 bg-gradient-to-br from-base-200/60 to-base-300/15" role="img" aria-hidden="true"></div>
+                <div class="rounded-none border border-base-300 bg-base-100 shadow-sm overflow-hidden">
+                    <div class="bg-base-100 box-border" style="padding: 25px;">
+                        <img
+                            src="{{ asset('images/utp0.jpg') }}"
+                            alt="Интерфейс модуля «Таймлайн»: отрезки, события и выкладка с биографий и фракций"
+                            class="w-full h-auto object-cover object-top block max-h-[min(28rem,75vh)]"
+                            loading="lazy"
+                            decoding="async"
+                        >
+                    </div>
+                </div>
             </div>
 
             <div class="grid md:grid-cols-2 gap-8 md:gap-12 items-center">
-                <div class="min-h-[200px] rounded-none border border-dashed border-base-300/50 bg-gradient-to-br from-base-200/60 to-base-300/15 md:order-1 order-2" role="img" aria-hidden="true"></div>
+                <div class="md:order-1 order-2 rounded-none border border-base-300 bg-base-100 shadow-sm overflow-hidden">
+                    <div class="bg-base-100 box-border" style="padding: 25px;">
+                        <img
+                            src="{{ asset('images/utp1.jpg') }}"
+                            alt="Интерфейс модуля «Карточки»: карточный метод и оформление текста"
+                            class="w-full h-auto object-cover object-top block max-h-[min(28rem,75vh)]"
+                            loading="lazy"
+                            decoding="async"
+                        >
+                    </div>
+                </div>
                 <div class="md:order-2 order-1">
                     <h3 class="font-display text-xl sm:text-2xl font-semibold text-base-content mb-3">Карточки</h3>
                     <p class="text-base-content/75 leading-relaxed">
-                        Истории из карточек: сцены, сюжетные блоки, порядок и выделения — с возможностью выгрузки в PDF.
+                        <span class="underline underline-offset-2">Карточный метод:</span> пиши Истории карточным методом, иди от общего к частному, создавай Циклы, разделяй Карточки, форматируй текст с помощью теговой системы, делай ссылки на другие разделы.
+                    </p>
+                    <p class="text-base-content/75 leading-relaxed mt-3">
+                        Между прочим, Набоков писал именно так!
                     </p>
                 </div>
             </div>
@@ -99,7 +125,10 @@
                 <div>
                     <h3 class="font-display text-xl sm:text-2xl font-semibold text-base-content mb-3">Связи</h3>
                     <p class="text-base-content/75 leading-relaxed">
-                        Доска связей между сущностями мира: персонажи, события, существа и другие узлы — на одном полотне (раздел развивается).
+                        <span class="underline underline-offset-2">Доски связей:</span> создавай Взаимосвязи между объектами различных разделов системы, визуализируй загадки, создавай генеалогические деревья, круги знакомств, политическую обстановку.
+                    </p>
+                    <p class="text-base-content/75 leading-relaxed mt-3">
+                        Все детективы в кино делают такие доски!
                     </p>
                 </div>
                 <div class="min-h-[200px] rounded-none border border-dashed border-base-300/50 bg-gradient-to-br from-base-200/60 to-base-300/15" role="img" aria-hidden="true"></div>
@@ -110,7 +139,46 @@
                 <div class="md:order-2 order-1">
                     <h3 class="font-display text-xl sm:text-2xl font-semibold text-base-content mb-3">Карты</h3>
                     <p class="text-base-content/75 leading-relaxed">
-                        Задел под географию мира: локации и привязка материалов к карте — в планах развития продукта.
+                        <span class="underline underline-offset-2">Карты местности:</span> создавай карты в одном из трёх доступных сеттингов (фэнтези, современность, научная фантастика), создавай Объекты на карте из готовых пресетов или загрузи свои спрайты, рисуй рельеф, используй политическую линзу для отрисовки границ государств.
+                    </p>
+                    <p class="text-base-content/75 leading-relaxed mt-3">
+                        Теперь ты не забудешь, куда герой шёл, и сколько рек ему пришлось преодолеть!
+                    </p>
+                </div>
+            </div>
+
+            <div class="grid md:grid-cols-2 gap-8 md:gap-12 items-center">
+                <div>
+                    <h3 class="font-display text-xl sm:text-2xl font-semibold text-base-content mb-3">Фракции</h3>
+                    <p class="text-base-content/75 leading-relaxed">
+                        <span class="underline underline-offset-2">Группируй людей:</span> расы, народы, политические течения, торговые ассоциации, корпорации, в общем, любые объединения людей и их сложные взаимосвязи.
+                    </p>
+                    <p class="text-base-content/75 leading-relaxed mt-3">
+                        Теперь ты не забудешь, кто кому - друг, а кто - нет!
+                    </p>
+                </div>
+                <div class="min-h-[200px] rounded-none border border-dashed border-base-300/50 bg-gradient-to-br from-base-200/60 to-base-300/15" role="img" aria-hidden="true"></div>
+            </div>
+
+            <div class="grid md:grid-cols-2 gap-8 md:gap-12 items-center">
+                <div class="md:order-1 order-2 rounded-none border border-base-300 bg-base-100 shadow-sm overflow-hidden">
+                    <div class="bg-base-100 box-border" style="padding: 25px;">
+                        <img
+                            src="{{ asset('images/utp6.jpg') }}"
+                            alt="Интерфейс модуля «Биографии»: профиль и события"
+                            class="w-full h-auto object-cover object-top block max-h-[min(28rem,75vh)]"
+                            loading="lazy"
+                            decoding="async"
+                        >
+                    </div>
+                </div>
+                <div class="md:order-2 order-1">
+                    <h3 class="font-display text-xl sm:text-2xl font-semibold text-base-content mb-3">Биографии</h3>
+                    <p class="text-base-content/75 leading-relaxed">
+                        <span class="underline underline-offset-2">Библии персонажей:</span> создавай биографические заметки о всех персонажах твоего Мира, экспортируй их жизни в Таймлайны, прописывай родственные и дружеские связи, отношение к фракциям, списки врагов.
+                    </p>
+                    <p class="text-base-content/75 leading-relaxed mt-3">
+                        Теперь ты не забудешь, кто есть кто!
                     </p>
                 </div>
             </div>
@@ -119,19 +187,22 @@
                 <div>
                     <h3 class="font-display text-xl sm:text-2xl font-semibold text-base-content mb-3">Бестиарий</h3>
                     <p class="text-base-content/75 leading-relaxed">
-                        Справочник существ: карточки, изображения, алфавитный указатель и выгрузка раздела в PDF.
+                        <span class="underline underline-offset-2">Справочник существ:</span> насели свой Мир невообразимыми существами, пропиши связи - кто кого ест, кто сколько живёт, кто где обитает.
+                    </p>
+                    <p class="text-base-content/75 leading-relaxed mt-3">
+                        И кого же встретит герой по пути через эту пустыню?
                     </p>
                 </div>
-                <div class="min-h-[200px] rounded-none border border-dashed border-base-300/50 bg-gradient-to-br from-base-200/60 to-base-300/15" role="img" aria-hidden="true"></div>
-            </div>
-
-            <div class="grid md:grid-cols-2 gap-8 md:gap-12 items-center">
-                <div class="min-h-[200px] rounded-none border border-dashed border-base-300/50 bg-gradient-to-br from-base-200/60 to-base-300/15 md:order-1 order-2" role="img" aria-hidden="true"></div>
-                <div class="md:order-2 order-1">
-                    <h3 class="font-display text-xl sm:text-2xl font-semibold text-base-content mb-3">Биографии</h3>
-                    <p class="text-base-content/75 leading-relaxed">
-                        Профили персонажей: биография, события жизни и навигация по алфавиту — в одном стиле с остальными модулями.
-                    </p>
+                <div class="rounded-none border border-base-300 bg-base-100 shadow-sm overflow-hidden">
+                    <div class="bg-base-100 box-border" style="padding: 25px;">
+                        <img
+                            src="{{ asset('images/utp7.jpg') }}"
+                            alt="Интерфейс модуля «Бестиарий»: существа и карточки"
+                            class="w-full h-auto object-cover object-top block max-h-[min(28rem,75vh)]"
+                            loading="lazy"
+                            decoding="async"
+                        >
+                    </div>
                 </div>
             </div>
         </div>

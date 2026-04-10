@@ -2,6 +2,7 @@
 
 namespace App\Models\Bestiary;
 
+use App\Models\Concerns\HasNoemaMarkupDescriptions;
 use App\Models\Worlds\World;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -11,6 +12,8 @@ use Illuminate\Support\Facades\Storage;
 
 class Creature extends Model
 {
+    use HasNoemaMarkupDescriptions;
+
     protected $fillable = [
         'world_id',
         'name',

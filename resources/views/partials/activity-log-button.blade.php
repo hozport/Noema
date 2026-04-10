@@ -2,6 +2,12 @@
     $journalTitle = $journalTitle ?? 'Журнал изменений';
     if (! empty($timelineJournal) && isset($world) && $world) {
         $href = route('worlds.activity.timeline', $world);
+    } elseif (! empty($card) && isset($world, $story) && $world && $story) {
+        $href = route('cards.card.activity', [$world, $story, $card]);
+    } elseif (! empty($story) && isset($world) && $world) {
+        $href = route('cards.stories.activity', [$world, $story]);
+    } elseif (! empty($cardsModuleJournal) && isset($world) && $world) {
+        $href = route('cards.module.activity', $world);
     } elseif (isset($world) && $world) {
         $href = route('worlds.activity', $world);
     } else {

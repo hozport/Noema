@@ -1,3 +1,5 @@
+import './noema-markup-fields.js';
+
 document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('biography-create-open')?.addEventListener('click', () => {
         document.getElementById('biography-create-dialog')?.showModal();

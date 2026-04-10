@@ -9,9 +9,31 @@ use App\Models\Cards\Card;
 use App\Models\Cards\Story;
 use App\Models\Worlds\World;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 class CardController extends Controller
 {
+    public function edit(World $world, Story $story, Card $card)
+    {
+        $this->authorizeCard($world, $card);
+
+        if ((int) $card->story_id !== (int) $story->id) {
+            abort(404);
+        }
+
+        if (($story->card_display_mode ?? Story::CARD_DISPLAY_MODAL) !== Story::CARD_DISPLAY_PAGE) {
+            return redirect()->route('cards.show', [$world, $story]);
+        }
+
+        $card->loadMissing('story');
+
+        return view('cards.card-edit', [
+            'world' => $world,
+            'story' => $story,
+            'card' => $card,
+        ]);
+    }
+
     public function reorder(Request $request, World $world, Story $story)
     {
         $this->authorizeStory($world, $story);
@@ -44,7 +66,11 @@ class CardController extends Controller
         $validated = $request->validate([
             'title' => ['nullable', 'string', 'max:255'],
             'content' => ['nullable', 'string'],
+            'is_highlighted' => ['sometimes', Rule::in(['0', '1'])],
         ]);
+
+        $highlightTouched = $request->has('is_highlighted');
+        $wantHighlight = $highlightTouched && (($validated['is_highlighted'] ?? '0') === '1');
 
         $updates = [];
 
@@ -80,16 +106,44 @@ class CardController extends Controller
             ActivityLog::record($request->user(), $world, 'card.updated', 'Обновлена карточка в истории «'.$card->story->name.'».', $card);
         }
 
+        if ($highlightTouched) {
+            $story = $card->story;
+            $wasHighlighted = (bool) $card->is_highlighted;
+
+            if ($wantHighlight) {
+                $story->cards()->update(['is_highlighted' => false]);
+                $card->update(['is_highlighted' => true]);
+            } else {
+                $card->update(['is_highlighted' => false]);
+            }
+
+            $card->refresh();
+
+            if ($wasHighlighted !== (bool) $card->is_highlighted) {
+                ActivityLog::record($request->user(), $world, 'card.highlight.updated', 'Изменена подсветка карточки в истории «'.$story->name.'».', $card);
+            }
+        }
+
         if ($request->expectsJson()) {
             return response()->json(['ok' => true, 'title' => $card->title]);
+        }
+
+        if ($request->has('is_highlighted')) {
+            $story = $card->story;
+
+            return redirect()
+                ->route('cards.card.edit', [$world, $story, $card])
+                ->with('success', 'Карточка сохранена.');
         }
 
         return redirect()->back();
     }
 
-    public function decompose(World $world, Card $card)
+    public function decompose(Request $request, World $world, Card $card)
     {
         $this->authorizeCard($world, $card);
+
+        $story = $card->story;
 
         $paragraphs = $card->getParagraphs();
 
@@ -98,7 +152,6 @@ class CardController extends Controller
         }
 
         $slot = $card->number;
-        $story = $card->story;
 
         $story->cards()
             ->where('number', '>', $slot)
@@ -118,10 +171,14 @@ class CardController extends Controller
 
         ActivityLog::record(auth()->user(), $world, 'card.decomposed', 'Декомпозиция карточки в истории «'.$story->name.'».', $story);
 
+        if ($request->boolean('redirect_to_story')) {
+            return redirect()->route('cards.show', [$world, $story])->with('success', 'Карточка декомпозирована.');
+        }
+
         return redirect()->back()->with('success', 'Карточка декомпозирована.');
     }
 
-    public function destroy(World $world, Card $card)
+    public function destroy(Request $request, World $world, Card $card)
     {
         $this->authorizeCard($world, $card);
 
@@ -130,6 +187,10 @@ class CardController extends Controller
 
         $card->delete();
         $story->renumberCards();
+
+        if ($request->boolean('redirect_to_story')) {
+            return redirect()->route('cards.show', [$world, $story])->with('success', 'Карточка удалена.');
+        }
 
         return redirect()->back()->with('success', 'Карточка удалена.');
     }

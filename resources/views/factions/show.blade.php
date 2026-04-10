@@ -77,7 +77,7 @@
 <body class="min-h-screen bg-base-100 flex flex-col">
     @include('site.partials.header')
 
-    <main class="flex-1 p-6 max-w-[1344px] w-full mx-auto">
+    <main class="flex-1 p-6 max-w-[1344px] w-full mx-auto" data-markup-resolve-url="{{ route('worlds.markup.resolve', $world) }}">
         <div class="flex items-start justify-between gap-4 mb-6">
             <div class="min-w-0 flex-1">
                 <h1 class="text-[1.875rem] font-semibold text-base-content leading-tight" style="font-family: 'Cormorant Garamond', Georgia, serif;">{{ $faction->name }}</h1>
@@ -130,17 +130,17 @@
                 @endif
             </div>
             <div class="min-w-0 flex-1 space-y-8">
-                @if (filled($faction->short_description))
+                @if (filled(trim((string) $faction->short_description)))
                     <section>
                         <h2 class="text-sm font-medium text-base-content/60 mb-2">Краткое описание</h2>
-                        <p class="text-base-content whitespace-pre-wrap leading-relaxed">{{ $faction->short_description }}</p>
+                        <div class="noema-markup-view text-base-content leading-relaxed">{!! $faction->shortDescriptionMarkupHtml() !!}</div>
                     </section>
                 @endif
 
-                @if (filled($faction->full_description))
+                @if (filled(trim((string) $faction->full_description)))
                     <section>
                         <h2 class="text-sm font-medium text-base-content/60 mb-2">Полное описание</h2>
-                        <div class="text-base-content whitespace-pre-wrap leading-relaxed">{{ $faction->full_description }}</div>
+                        <div class="noema-markup-view text-base-content leading-relaxed">{!! $faction->fullDescriptionMarkupHtml() !!}</div>
                     </section>
                 @endif
 
@@ -192,7 +192,9 @@
     <dialog id="faction-edit-dialog" class="biography-dialog" aria-labelledby="faction-edit-title">
         <div class="biography-dialog__viewport">
             <div class="biography-dialog__scrim" data-faction-dialog-close tabindex="-1" aria-hidden="true"></div>
-            <form method="POST" action="{{ route('factions.update', [$world, $faction]) }}" enctype="multipart/form-data" class="biography-dialog__panel" onclick="event.stopPropagation()">
+            <form method="POST" action="{{ route('factions.update', [$world, $faction]) }}" enctype="multipart/form-data" class="biography-dialog__panel" onclick="event.stopPropagation()"
+                data-markup-entities-url="{{ route('worlds.markup.entities', $world) }}"
+                data-markup-resolve-url="{{ route('worlds.markup.resolve', $world) }}">
                 @csrf
                 @method('PUT')
                 <button type="button" class="biography-dialog__close" data-faction-dialog-close aria-label="Закрыть" title="Закрыть">
@@ -214,6 +216,7 @@
         </div>
     </dialog>
 
+    @include('partials.markup-link-modal')
     @include('site.partials.footer')
 
     @if ($errors->any())

@@ -10,7 +10,11 @@ use Illuminate\Support\Facades\DB;
 
 class Story extends Model
 {
-    protected $fillable = ['world_id', 'name', 'cycle', 'synopsis'];
+    public const CARD_DISPLAY_MODAL = 'modal';
+
+    public const CARD_DISPLAY_PAGE = 'page';
+
+    protected $fillable = ['world_id', 'name', 'cycle', 'synopsis', 'card_display_mode'];
 
     public function world(): BelongsTo
     {

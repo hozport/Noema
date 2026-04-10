@@ -153,4 +153,25 @@ class ConnectionsBoardApiTest extends TestCase
             'entity_id' => $event->id,
         ]);
     }
+
+    public function test_owner_can_delete_connection_board(): void
+    {
+        $user = User::factory()->create();
+        $world = World::query()->create([
+            'user_id' => $user->id,
+            'name' => 'W',
+            'onoff' => true,
+        ]);
+
+        $board = ConnectionBoard::query()->create([
+            'world_id' => $world->id,
+            'name' => 'Удаляемая',
+        ]);
+
+        $this->actingAs($user)
+            ->delete(route('worlds.connections.destroy', [$world, $board]))
+            ->assertRedirect(route('worlds.connections', $world));
+
+        $this->assertDatabaseMissing('connection_boards', ['id' => $board->id]);
+    }
 }

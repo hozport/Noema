@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Faction;
 
 use App\Http\Controllers\Controller;
+use App\Markup\NoemaMarkupValidator;
 use App\Models\ActivityLog;
 use App\Models\Biography\Biography;
 use App\Models\Faction\Faction;
@@ -264,6 +265,18 @@ class FactionProfileController extends Controller
         $validated['member_ids'] = $this->filterPivotIds($validated['member_ids'] ?? [], null);
         $validated['related_ids'] = $this->filterPivotIds($validated['related_ids'] ?? [], $selfId);
         $validated['enemy_ids'] = $this->filterPivotIds($validated['enemy_ids'] ?? [], $selfId);
+
+        foreach (['short_description', 'full_description'] as $field) {
+            $raw = $validated[$field] ?? null;
+            if ($raw !== null && $raw !== '') {
+                $markupErrors = NoemaMarkupValidator::validate($raw);
+                if ($markupErrors !== []) {
+                    throw ValidationException::withMessages([
+                        $field => implode(' ', $markupErrors),
+                    ]);
+                }
+            }
+        }
 
         return $validated;
     }

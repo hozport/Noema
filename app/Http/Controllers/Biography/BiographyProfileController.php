@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Biography;
 
 use App\Http\Controllers\Controller;
+use App\Markup\NoemaMarkupValidator;
 use App\Models\ActivityLog;
 use App\Models\Biography\Biography;
 use App\Models\Faction\Faction;
@@ -310,6 +311,18 @@ class BiographyProfileController extends Controller
 
         $this->validateBiographyBirthDeathConsistency($validated);
         $this->assertDeathAfterBirth($validated);
+
+        foreach (['short_description', 'full_description'] as $field) {
+            $raw = $validated[$field] ?? null;
+            if ($raw !== null && $raw !== '') {
+                $markupErrors = NoemaMarkupValidator::validate($raw);
+                if ($markupErrors !== []) {
+                    throw ValidationException::withMessages([
+                        $field => implode(' ', $markupErrors),
+                    ]);
+                }
+            }
+        }
 
         return $validated;
     }

@@ -131,7 +131,7 @@
 <body class="min-h-screen bg-base-100 flex flex-col">
     @include('site.partials.header')
 
-    <main class="flex-1 p-6 max-w-[1344px] w-full mx-auto">
+    <main class="flex-1 p-6 max-w-[1344px] w-full mx-auto" data-markup-resolve-url="{{ route('worlds.markup.resolve', $world) }}">
         @if (session('success'))
             <p class="text-success mb-4">{{ session('success') }}</p>
         @endif
@@ -186,10 +186,10 @@
                 @endif
             </div>
             <div class="min-w-0 flex-1 space-y-8">
-                @if (filled($creature->short_description))
+                @if (filled(trim((string) $creature->short_description)))
                     <section>
                         <h2 class="text-sm font-medium text-base-content/60 mb-2">Краткое описание</h2>
-                        <p class="text-base-content whitespace-pre-wrap leading-relaxed">{{ $creature->short_description }}</p>
+                        <div class="noema-markup-view text-base-content leading-relaxed">{!! $creature->shortDescriptionMarkupHtml() !!}</div>
                     </section>
                 @endif
 
@@ -216,10 +216,10 @@
                     </div>
                 </div>
 
-                @if (filled($creature->full_description))
+                @if (filled(trim((string) $creature->full_description)))
                     <section>
                         <h2 class="text-sm font-medium text-base-content/60 mb-2">Полное описание</h2>
-                        <div class="text-base-content whitespace-pre-wrap leading-relaxed">{{ $creature->full_description }}</div>
+                        <div class="noema-markup-view text-base-content leading-relaxed">{!! $creature->fullDescriptionMarkupHtml() !!}</div>
                     </section>
                 @endif
 
@@ -280,7 +280,9 @@
     <dialog id="creature-edit-dialog" class="bestiary-dialog" aria-labelledby="creature-edit-title">
         <div class="bestiary-dialog__viewport">
             <div class="bestiary-dialog__scrim" data-bestiary-dialog-close tabindex="-1" aria-hidden="true"></div>
-            <form method="POST" action="{{ route('bestiary.creatures.update', [$world, $creature]) }}" enctype="multipart/form-data" class="bestiary-dialog__panel" onclick="event.stopPropagation()">
+            <form method="POST" action="{{ route('bestiary.creatures.update', [$world, $creature]) }}" enctype="multipart/form-data" class="bestiary-dialog__panel" onclick="event.stopPropagation()"
+                data-markup-entities-url="{{ route('worlds.markup.entities', $world) }}"
+                data-markup-resolve-url="{{ route('worlds.markup.resolve', $world) }}">
                 @csrf
                 @method('PUT')
                 <button type="button" class="bestiary-dialog__close" data-bestiary-dialog-close aria-label="Закрыть" title="Закрыть">
@@ -304,6 +306,7 @@
         </div>
     </dialog>
 
+    @include('partials.markup-link-modal')
     @include('site.partials.footer')
 
     @if ($errors->any())

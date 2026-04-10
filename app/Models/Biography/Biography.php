@@ -2,6 +2,7 @@
 
 namespace App\Models\Biography;
 
+use App\Models\Concerns\HasNoemaMarkupDescriptions;
 use App\Models\Faction\Faction;
 use App\Models\Timeline\TimelineEvent;
 use App\Models\Worlds\World;
@@ -14,6 +15,8 @@ use Illuminate\Support\Facades\Storage;
 
 class Biography extends Model
 {
+    use HasNoemaMarkupDescriptions;
+
     protected $fillable = [
         'world_id',
         'name',

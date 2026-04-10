@@ -1,3 +1,5 @@
+import './noema-markup-fields.js';
+
 document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('faction-create-open')?.addEventListener('click', () => {
         document.getElementById('faction-create-dialog')?.showModal();

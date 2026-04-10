@@ -18,6 +18,7 @@ use App\Http\Controllers\Faction\FactionEventController;
 use App\Http\Controllers\Faction\FactionProfileController;
 use App\Http\Controllers\Faction\FactionsController;
 use App\Http\Controllers\Faction\FactionTimelineController;
+use App\Http\Controllers\Markup\MarkupEntityController;
 use App\Http\Controllers\Timeline\TimelineClearController;
 use App\Http\Controllers\Timeline\TimelineController;
 use App\Http\Controllers\Timeline\TimelineEventController;
@@ -29,11 +30,21 @@ use App\Http\Controllers\Worlds\WorldDashboardController;
 use App\Http\Controllers\Worlds\WorldMapsController;
 use App\Http\Controllers\Worlds\WorldsController;
 use App\Http\Controllers\Worlds\WorldSettingsController;
-use App\Http\Controllers\Markup\MarkupEntityController;
 use Illuminate\Support\Facades\Route;
 
+/*
+|--------------------------------------------------------------------------
+| Публичные страницы сайта (лендинг, документация и т.д.)
+|--------------------------------------------------------------------------
+*/
 require __DIR__.'/site.php';
 
+/*
+|--------------------------------------------------------------------------
+| Общая часть приложения (без middleware auth)
+|--------------------------------------------------------------------------
+| Вход, выход и маршрут имени login для редиректов Laravel.
+*/
 Route::get('/login', function () {
     return auth()->check()
         ? redirect()->route('worlds.index')
@@ -42,7 +53,18 @@ Route::get('/login', function () {
 Route::post('/login', [LoginController::class, 'login']);
 Route::post('/logout', [LoginController::class, 'logout'])->name('logout');
 
+/*
+|--------------------------------------------------------------------------
+| Защищённые маршруты (требуется авторизация)
+|--------------------------------------------------------------------------
+*/
 Route::middleware('auth')->group(function () {
+    /*
+    |----------------------------------------------------------------------
+    | Модуль: аккаунт пользователя
+    |----------------------------------------------------------------------
+    | Профиль, активность, отображение списка миров, команда, настройки Noema.
+    */
     Route::prefix('account')->name('account.')->group(function () {
         Route::get('/profile', [ProfileController::class, 'show'])->name('profile');
         Route::put('/profile', [ProfileController::class, 'update'])->name('profile.update');
@@ -52,16 +74,36 @@ Route::middleware('auth')->group(function () {
         Route::get('/settings', [NoemaSettingsController::class, 'show'])->name('settings');
     });
 
+    /*
+    |----------------------------------------------------------------------
+    | Модуль: миры (список, создание, удаление)
+    |----------------------------------------------------------------------
+    */
     Route::get('/worlds', [WorldsController::class, 'index'])->name('worlds.index');
     Route::get('/worlds/create', [CreateWorldController::class, 'create'])->name('worlds.create');
     Route::post('/worlds', [CreateWorldController::class, 'store'])->name('worlds.store');
     Route::delete('/worlds/{world}', [WorldsController::class, 'destroy'])->name('worlds.destroy');
+
+    /*
+    |----------------------------------------------------------------------
+    | Модуль: мир — дашборд, настройки, активность, API разметки Noema
+    |----------------------------------------------------------------------
+    */
     Route::get('/worlds/{world}', [WorldDashboardController::class, 'show'])->name('worlds.dashboard');
     Route::get('/worlds/{world}/activity/timeline', [ActivityLogController::class, 'worldTimeline'])->name('worlds.activity.timeline');
     Route::get('/worlds/{world}/activity', [ActivityLogController::class, 'world'])->name('worlds.activity');
     Route::get('/worlds/{world}/markup/entities', [MarkupEntityController::class, 'entities'])->name('worlds.markup.entities');
     Route::post('/worlds/{world}/markup/resolve', [MarkupEntityController::class, 'resolve'])->name('worlds.markup.resolve');
     Route::put('/worlds/{world}', [WorldSettingsController::class, 'update'])->name('worlds.update');
+
+    /*
+    |----------------------------------------------------------------------
+    | Модуль: доска связей (connection boards)
+    |----------------------------------------------------------------------
+    | Важно: маршруты с фиксированными сегментами (timeline-lines, stories, …)
+    | должны идти до worlds/{world}/connections/{connectionBoard}, иначе
+    | Laravel примет «stories», «creatures» и т.д. за id доски.
+    */
     Route::get('/worlds/{world}/connections/timeline-lines', [ConnectionsBoardController::class, 'timelineLines'])->name('worlds.connections.data.timeline-lines');
     Route::get('/worlds/{world}/connections/timeline-lines/{line}/events', [ConnectionsBoardController::class, 'timelineLineEvents'])->name('worlds.connections.data.timeline-line-events');
     Route::get('/worlds/{world}/connections/stories', [ConnectionsBoardController::class, 'stories'])->name('worlds.connections.data.stories');
@@ -76,10 +118,23 @@ Route::middleware('auth')->group(function () {
     Route::delete('/worlds/{world}/connections/{connectionBoard}/nodes/{node}', [ConnectionsBoardController::class, 'nodesDestroy'])->name('worlds.connections.nodes.destroy');
     Route::post('/worlds/{world}/connections/{connectionBoard}/edges', [ConnectionsBoardController::class, 'edgesStore'])->name('worlds.connections.edges.store');
     Route::delete('/worlds/{world}/connections/{connectionBoard}/edges/{edge}', [ConnectionsBoardController::class, 'edgesDestroy'])->name('worlds.connections.edges.destroy');
+    Route::delete('/worlds/{world}/connections/{connectionBoard}', [ConnectionsBoardController::class, 'destroy'])->name('worlds.connections.destroy');
+
+    /*
+    |----------------------------------------------------------------------
+    | Модуль: карты мира (спрайты)
+    |----------------------------------------------------------------------
+    */
     Route::get('/worlds/{world}/maps', [WorldMapsController::class, 'show'])->name('worlds.maps');
     Route::post('/worlds/{world}/maps/sprites', [WorldMapsController::class, 'storeSprite'])->name('worlds.maps.sprites.store');
     Route::put('/worlds/{world}/maps/sprites/{worldMapSprite}', [WorldMapsController::class, 'updateSprite'])->name('worlds.maps.sprites.update');
     Route::delete('/worlds/{world}/maps/sprites/{worldMapSprite}', [WorldMapsController::class, 'destroySprite'])->name('worlds.maps.sprites.destroy');
+
+    /*
+    |----------------------------------------------------------------------
+    | Модуль: таймлайн мира (линии и события)
+    |----------------------------------------------------------------------
+    */
     Route::get('/worlds/{world}/timeline', [TimelineController::class, 'show'])->name('worlds.timeline');
     Route::post('/worlds/{world}/timeline/clear', [TimelineClearController::class, 'store'])->name('worlds.timeline.clear');
     Route::post('/worlds/{world}/timeline/lines', [TimelineLineController::class, 'store'])->name('timeline.lines.store');
@@ -89,17 +144,32 @@ Route::middleware('auth')->group(function () {
     Route::put('/worlds/{world}/timeline/events/{timelineEvent}', [TimelineEventController::class, 'update'])->name('timeline.events.update');
     Route::delete('/worlds/{world}/timeline/events/{timelineEvent}', [TimelineEventController::class, 'destroy'])->name('timeline.events.destroy');
 
+    /*
+    |----------------------------------------------------------------------
+    | Модуль: истории и сюжетные карточки
+    |----------------------------------------------------------------------
+    */
     Route::get('/worlds/{world}/cards', [StoryController::class, 'index'])->name('cards.index');
+    Route::get('/worlds/{world}/cards/activity', [ActivityLogController::class, 'cardsModule'])->name('cards.module.activity');
     Route::post('/worlds/{world}/cards/stories', [StoryController::class, 'store'])->name('cards.stories.store');
     Route::get('/worlds/{world}/cards/stories/{story}', [StoryController::class, 'show'])->name('cards.show');
     Route::put('/worlds/{world}/cards/stories/{story}', [StoryController::class, 'update'])->name('cards.stories.update');
     Route::get('/worlds/{world}/cards/stories/{story}/pdf', [StoryController::class, 'pdf'])->name('cards.stories.pdf');
+    Route::get('/worlds/{world}/cards/stories/{story}/activity', [ActivityLogController::class, 'story'])->name('cards.stories.activity');
+    Route::delete('/worlds/{world}/cards/stories/{story}', [StoryController::class, 'destroy'])->name('cards.stories.destroy');
     Route::post('/worlds/{world}/cards/stories/{story}/reorder', [CardController::class, 'reorder'])->name('cards.reorder');
+    Route::get('/worlds/{world}/cards/stories/{story}/cards/{card}/edit', [CardController::class, 'edit'])->name('cards.card.edit');
+    Route::get('/worlds/{world}/cards/stories/{story}/cards/{card}/activity', [ActivityLogController::class, 'card'])->name('cards.card.activity');
     Route::put('/worlds/{world}/cards/{card}', [CardController::class, 'update'])->name('cards.update');
     Route::delete('/worlds/{world}/cards/{card}', [CardController::class, 'destroy'])->name('cards.destroy');
     Route::post('/worlds/{world}/cards/{card}/highlight', [CardController::class, 'highlight'])->name('cards.highlight');
     Route::post('/worlds/{world}/cards/{card}/decompose', [CardController::class, 'decompose'])->name('cards.decompose');
 
+    /*
+    |----------------------------------------------------------------------
+    | Модуль: бестиарий
+    |----------------------------------------------------------------------
+    */
     Route::get('/worlds/{world}/bestiary', [BestiaryController::class, 'index'])->name('bestiary.index');
     Route::get('/worlds/{world}/bestiary/pdf', [BestiaryController::class, 'pdf'])->name('bestiary.pdf');
     Route::post('/worlds/{world}/bestiary/creatures', [BestiaryCreatureController::class, 'store'])->name('bestiary.creatures.store');
@@ -108,6 +178,12 @@ Route::middleware('auth')->group(function () {
     Route::delete('/worlds/{world}/bestiary/creatures/{creature}', [BestiaryCreatureController::class, 'destroy'])->name('bestiary.creatures.destroy');
     Route::get('/worlds/{world}/bestiary/creatures/{creature}', [BestiaryCreatureController::class, 'show'])->name('bestiary.creatures.show');
 
+    /*
+    |----------------------------------------------------------------------
+    | Модуль: биографии
+    |----------------------------------------------------------------------
+    | Сводный PDF и индекс — до маршрутов с {biography}, чтобы не перехватить slug «pdf».
+    */
     Route::get('/worlds/{world}/biographies/pdf', [BiographiesController::class, 'pdf'])->name('biographies.pdf');
     Route::get('/worlds/{world}/biographies', [BiographiesController::class, 'index'])->name('biographies.index');
     Route::post('/worlds/{world}/biographies', [BiographyProfileController::class, 'store'])->name('biographies.store');
@@ -122,6 +198,11 @@ Route::middleware('auth')->group(function () {
     Route::get('/worlds/{world}/biographies/{biography}', [BiographyProfileController::class, 'show'])->name('biographies.show');
     Route::put('/worlds/{world}/biographies/{biography}', [BiographyProfileController::class, 'update'])->name('biographies.update');
 
+    /*
+    |----------------------------------------------------------------------
+    | Модуль: фракции
+    |----------------------------------------------------------------------
+    */
     Route::get('/worlds/{world}/factions', [FactionsController::class, 'index'])->name('factions.index');
     Route::get('/worlds/{world}/factions/pdf', [FactionsController::class, 'pdf'])->name('factions.index.pdf');
     Route::post('/worlds/{world}/factions', [FactionProfileController::class, 'store'])->name('factions.store');

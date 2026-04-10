@@ -17,7 +17,8 @@
             min-height: 120px !important; flex-shrink: 0 !important;
             border-radius: 0 !important;
         }
-        .story-dialog {
+        /* Модалка создания истории (отдельно от настроек на странице истории) */
+        .add-story-dialog {
             position: fixed !important;
             inset: 0 !important;
             width: 100% !important;
@@ -31,9 +32,9 @@
             overflow: hidden !important;
             box-sizing: border-box !important;
         }
-        .story-dialog::backdrop { background: rgba(0,0,0,0.55); }
-        .story-dialog:not([open]) { display: none !important; }
-        .story-dialog[open] { display: block !important; }
+        .add-story-dialog::backdrop { background: rgba(0,0,0,0.55); }
+        .add-story-dialog:not([open]) { display: none !important; }
+        .add-story-dialog[open] { display: block !important; }
         .story-dialog__viewport {
             position: relative;
             width: 100%;
@@ -102,9 +103,12 @@
                             <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
                         </svg>
                     </button>
-                    @include('partials.activity-log-button', ['world' => $world])
+                    @include('partials.activity-log-button', ['world' => $world, 'cardsModuleJournal' => true])
                 </div>
             </div>
+            @if (session('success'))
+                <p class="text-success">{{ session('success') }}</p>
+            @endif
             @if ($cycleOptions->isNotEmpty())
                 <form method="get" action="{{ route('cards.index', $world) }}" class="flex flex-wrap items-center gap-2">
                     <label for="cards-cycle-filter" class="text-sm text-base-content/70 whitespace-nowrap">Цикл</label>
@@ -143,7 +147,7 @@
         @endif
     </main>
 
-    <dialog id="addStoryModal" class="story-dialog" aria-labelledby="add-story-heading">
+    <dialog id="addStoryModal" class="add-story-dialog" aria-labelledby="add-story-heading">
         <div class="story-dialog__viewport">
             <div class="story-dialog__scrim" data-add-story-close tabindex="-1" aria-hidden="true"></div>
             <form method="POST" action="{{ route('cards.stories.store', $world) }}" class="story-dialog__panel" onclick="event.stopPropagation()">
@@ -161,13 +165,12 @@
                 <label for="newStoryCycle" class="block text-sm text-base-content/70 mb-1 mt-4">Цикл</label>
                 <input type="text" id="newStoryCycle" name="cycle" value="{{ old('cycle') }}" list="story-cycle-datalist" maxlength="255" placeholder="Выберите из списка или введите свой"
                     class="input input-bordered w-full rounded-none bg-base-200 border-base-300 @error('cycle') input-error @enderror"
-                    aria-describedby="newStoryCycle-desc">
+                    aria-describedby="newStoryCycleCounter">
                 <datalist id="story-cycle-datalist">
                     @foreach ($cycleOptions as $c)
                         <option value="{{ $c }}"></option>
                     @endforeach
                 </datalist>
-                <p id="newStoryCycle-desc" class="text-xs text-base-content/50 mt-1">Необязательно. Общий цикл для нескольких историй: можно выбрать уже существующий или задать новый.</p>
                 <p id="newStoryCycleCounter" class="text-xs text-right mt-1 tabular-nums" aria-live="polite"></p>
                 @error('cycle')
                     <p class="text-error text-sm mt-1">{{ $message }}</p>
@@ -175,8 +178,7 @@
                 <label for="newStorySynopsis" class="block text-sm text-base-content/70 mb-1 mt-4">Синопсис</label>
                 <textarea id="newStorySynopsis" name="synopsis" rows="5" placeholder="Краткое описание (необязательно)"
                     class="textarea textarea-bordered w-full rounded-none bg-base-200 border-base-300 resize-y min-h-[6rem] @error('synopsis') textarea-error @enderror"
-                    aria-describedby="newStorySynopsis-desc">{{ old('synopsis') }}</textarea>
-                <p id="newStorySynopsis-desc" class="text-xs text-base-content/50 mt-1">Краткое описание; мягкий ориентир — до ~8000 знаков.</p>
+                    aria-describedby="newStorySynopsisCounter">{{ old('synopsis') }}</textarea>
                 <p id="newStorySynopsisCounter" class="text-xs text-right mt-1 tabular-nums" aria-live="polite"></p>
                 @error('synopsis')
                     <p class="text-error text-sm mt-1">{{ $message }}</p>

@@ -41,6 +41,10 @@
         </div>
         <p class="text-base-content/60 mb-6 max-w-2xl">{{ $world->name }} — доски для связей между сущностями мира (как на детективной стене).</p>
 
+        @if (session('success'))
+            <p class="text-success mb-4">{{ session('success') }}</p>
+        @endif
+
         @if ($boards->isNotEmpty())
             <div class="card-block-container">
                 @foreach ($boards as $board)

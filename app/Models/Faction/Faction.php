@@ -3,6 +3,7 @@
 namespace App\Models\Faction;
 
 use App\Models\Biography\Biography;
+use App\Models\Concerns\HasNoemaMarkupDescriptions;
 use App\Models\Timeline\TimelineLine;
 use App\Models\Worlds\World;
 use App\Services\FactionDedicatedBiographyTypeMigrationService;
@@ -17,6 +18,8 @@ use Illuminate\Support\Str;
 
 class Faction extends Model
 {
+    use HasNoemaMarkupDescriptions;
+
     protected static function booted(): void
     {
         static::deleting(function (Faction $faction): void {

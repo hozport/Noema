@@ -77,7 +77,7 @@
 <body class="min-h-screen bg-base-100 flex flex-col">
     @include('site.partials.header')
 
-    <main class="flex-1 p-6 max-w-[1344px] w-full mx-auto">
+    <main class="flex-1 p-6 max-w-[1344px] w-full mx-auto" data-markup-resolve-url="{{ route('worlds.markup.resolve', $world) }}">
         <div class="flex items-start justify-between gap-4 mb-6">
             <div class="min-w-0 flex-1">
                 <h1 class="text-[1.875rem] font-semibold text-base-content leading-tight" style="font-family: 'Cormorant Garamond', Georgia, serif;">{{ $biography->name }}</h1>
@@ -130,17 +130,17 @@
                 @endif
             </div>
             <div class="min-w-0 flex-1 space-y-8">
-                @if (filled($biography->short_description))
+                @if (filled(trim((string) $biography->short_description)))
                     <section>
                         <h2 class="text-sm font-medium text-base-content/60 mb-2">Краткое описание</h2>
-                        <p class="text-base-content whitespace-pre-wrap leading-relaxed">{{ $biography->short_description }}</p>
+                        <div class="noema-markup-view text-base-content leading-relaxed">{!! $biography->shortDescriptionMarkupHtml() !!}</div>
                     </section>
                 @endif
 
-                @if (filled($biography->full_description))
+                @if (filled(trim((string) $biography->full_description)))
                     <section>
                         <h2 class="text-sm font-medium text-base-content/60 mb-2">Полное описание</h2>
-                        <div class="text-base-content whitespace-pre-wrap leading-relaxed">{{ $biography->full_description }}</div>
+                        <div class="noema-markup-view text-base-content leading-relaxed">{!! $biography->fullDescriptionMarkupHtml() !!}</div>
                     </section>
                 @endif
 
@@ -194,8 +194,8 @@
                             @foreach ($socialMembershipFactions as $mf)
                                 <li class="border border-base-300/60 rounded-none bg-base-200/20 p-4">
                                     <a href="{{ route('factions.show', [$world, $mf]) }}" class="link link-hover font-medium text-base-content">{{ $mf->name }}</a>
-                                    @if (filled($mf->short_description))
-                                        <p class="text-sm text-base-content/75 mt-2 whitespace-pre-wrap leading-relaxed">{{ $mf->short_description }}</p>
+                                    @if (filled(trim((string) $mf->short_description)))
+                                        <div class="noema-markup-view text-sm text-base-content/75 mt-2 leading-relaxed">{!! $mf->shortDescriptionMarkupHtml() !!}</div>
                                     @endif
                                 </li>
                             @endforeach
@@ -209,7 +209,9 @@
     <dialog id="biography-edit-dialog" class="biography-dialog" aria-labelledby="biography-edit-title">
         <div class="biography-dialog__viewport">
             <div class="biography-dialog__scrim" data-biography-dialog-close tabindex="-1" aria-hidden="true"></div>
-            <form method="POST" action="{{ route('biographies.update', [$world, $biography]) }}" enctype="multipart/form-data" class="biography-dialog__panel" onclick="event.stopPropagation()">
+            <form method="POST" action="{{ route('biographies.update', [$world, $biography]) }}" enctype="multipart/form-data" class="biography-dialog__panel" onclick="event.stopPropagation()"
+                data-markup-entities-url="{{ route('worlds.markup.entities', $world) }}"
+                data-markup-resolve-url="{{ route('worlds.markup.resolve', $world) }}">
                 @csrf
                 @method('PUT')
                 <button type="button" class="biography-dialog__close" data-biography-dialog-close aria-label="Закрыть" title="Закрыть">
@@ -234,6 +236,7 @@
         </div>
     </dialog>
 
+    @include('partials.markup-link-modal')
     @include('site.partials.footer')
 
     @if ($errors->any())

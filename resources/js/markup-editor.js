@@ -1,13 +1,112 @@
-import { RangeSetBuilder } from '@codemirror/state';
-import { Decoration, EditorView, ViewPlugin } from '@codemirror/view';
-import { basicSetup } from 'codemirror';
+import { Prec, RangeSetBuilder } from '@codemirror/state';
+import { defaultKeymap, history, historyKeymap } from '@codemirror/commands';
+import { defaultHighlightStyle, syntaxHighlighting } from '@codemirror/language';
+import {
+    Decoration,
+    EditorView,
+    drawSelection,
+    highlightSpecialChars,
+    keymap,
+    lineNumbers,
+    ViewPlugin,
+} from '@codemirror/view';
 import { MODULE_OPTIONS, parseAndRenderHtml } from './noema-markup.js';
+import { bindEntityLinkTooltips } from './markup-entity-tooltips.js';
 
-/** @type {EditorView|null} */
-let cmView = null;
+/** @type {HTMLElement|null} */
+let activeCtxMenuEl = null;
 
-/** @type {(() => void)|null} */
-let tooltipHideTimer = null;
+function hideActiveCtxMenu() {
+    if (activeCtxMenuEl) {
+        activeCtxMenuEl.remove();
+        activeCtxMenuEl = null;
+    }
+}
+
+if (typeof document !== 'undefined') {
+    document.addEventListener('click', hideActiveCtxMenu);
+}
+
+/** Редактор, в который вставлять ссылку из общего модального окна (последний открывший ссылку). */
+/** @type {import('@codemirror/view').EditorView|null} */
+let pendingLinkCmView = null;
+
+/**
+ * Общий linkEntityModal: один confirm на страницу, иначе несколько полей перезаписывают обработчики.
+ * @param {HTMLDialogElement|null} linkModal
+ */
+function ensureLinkModalShared(linkModal) {
+    if (!linkModal || linkModal.dataset.noemaMarkupLinkBound === '1') {
+        return;
+    }
+    linkModal.dataset.noemaMarkupLinkBound = '1';
+    const linkModalConfirm = document.getElementById('linkModalConfirm');
+    const linkModalCancel = document.getElementById('linkModalCancel');
+    const linkModuleSelect = document.getElementById('linkModuleSelect');
+    const linkEntitySelect = document.getElementById('linkEntitySelect');
+
+    linkModalConfirm?.addEventListener('click', () => {
+        if (!pendingLinkCmView || !linkModuleSelect || !linkEntitySelect) {
+            return;
+        }
+        const mod = parseInt(linkModuleSelect.value, 10);
+        const ent = parseInt(linkEntitySelect.value, 10);
+        if (!Number.isFinite(ent) || ent < 1) {
+            return;
+        }
+        wrapSelection(pendingLinkCmView, `[link module=${mod} entity=${ent}]`, '[/link]');
+        pendingLinkCmView = null;
+        linkModal.close();
+    });
+    linkModalCancel?.addEventListener('click', () => {
+        pendingLinkCmView = null;
+        linkModal.close();
+    });
+    linkModal.querySelectorAll('[data-link-modal-close]').forEach((el) => {
+        el.addEventListener('click', () => {
+            pendingLinkCmView = null;
+            linkModal.close();
+        });
+    });
+    linkModuleSelect?.addEventListener('change', () => {
+        const url = linkModal.dataset.markupEntitiesUrl || '';
+        if (!url || !linkEntitySelect) {
+            return;
+        }
+        loadEntitiesForModuleShared(linkEntitySelect, parseInt(linkModuleSelect.value, 10), url);
+    });
+}
+
+/**
+ * @param {HTMLSelectElement|null} linkEntitySelect
+ * @param {number} mod
+ * @param {string} entitiesUrl
+ */
+async function loadEntitiesForModuleShared(linkEntitySelect, mod, entitiesUrl) {
+    if (!linkEntitySelect || !entitiesUrl) {
+        return;
+    }
+    linkEntitySelect.innerHTML = '<option value="">Загрузка…</option>';
+    const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+    const url = new URL(entitiesUrl, window.location.origin);
+    url.searchParams.set('module', String(mod));
+    const res = await fetch(url.toString(), {
+        headers: {
+            Accept: 'application/json',
+            'X-Requested-With': 'XMLHttpRequest',
+            'X-CSRF-TOKEN': token || '',
+        },
+    });
+    const data = res.ok ? await res.json() : { items: [] };
+    linkEntitySelect.innerHTML = '<option value="">— выберите —</option>';
+    for (const it of data.items || []) {
+        const opt = document.createElement('option');
+        opt.value = String(it.id);
+        opt.textContent = it.label;
+        linkEntitySelect.appendChild(opt);
+    }
+}
+
 
 /**
  * @param {string} text
@@ -50,20 +149,24 @@ function scanNoemaHighlights(text) {
  * @param {EditorView} view
  */
 function buildDecorations(view) {
-    const text = view.state.doc.toString();
-    const ranges = scanNoemaHighlights(text);
-    if (ranges.length === 0) {
+    try {
+        const text = view.state.doc.toString();
+        const ranges = scanNoemaHighlights(text);
+        if (ranges.length === 0) {
+            return Decoration.none;
+        }
+        const b = new RangeSetBuilder();
+        for (const r of ranges) {
+            b.add(
+                r.from,
+                r.to,
+                Decoration.mark({ class: r.class })
+            );
+        }
+        return b.finish();
+    } catch {
         return Decoration.none;
     }
-    const b = new RangeSetBuilder();
-    for (const r of ranges) {
-        b.add(
-            r.from,
-            r.to,
-            Decoration.mark({ class: r.class })
-        );
-    }
-    return b.finish();
 }
 
 function noemaHighlightPlugin() {
@@ -105,176 +208,134 @@ function wrapSelection(view, open, close) {
     view.focus();
 }
 
+/** Зачёркивание: Mod-Shift-s, чтобы не отбирать Ctrl+S у браузера (сохранение страницы). */
+const noemaMarkupFormatKeymap = Prec.highest(
+    keymap.of([
+        {
+            key: 'Mod-b',
+            run: (view) => {
+                wrapSelection(view, '[b]', '[/b]');
+                return true;
+            },
+        },
+        {
+            key: 'Mod-i',
+            run: (view) => {
+                wrapSelection(view, '[i]', '[/i]');
+                return true;
+            },
+        },
+        {
+            key: 'Mod-u',
+            run: (view) => {
+                wrapSelection(view, '[u]', '[/u]');
+                return true;
+            },
+        },
+        {
+            key: 'Mod-Shift-s',
+            run: (view) => {
+                wrapSelection(view, '[s]', '[/s]');
+                return true;
+            },
+        },
+    ])
+);
+
+/** Как `minimalSetup` из пакета codemirror, но только из @codemirror/* — один граф модулей в бандле. */
+const noemaMarkupEditorExtensions = [
+    lineNumbers(),
+    highlightSpecialChars(),
+    history(),
+    drawSelection(),
+    syntaxHighlighting(defaultHighlightStyle, { fallback: true }),
+    noemaMarkupFormatKeymap,
+    keymap.of([...defaultKeymap, ...historyKeymap]),
+];
+
 /**
  * @param {object} opts
- * @param {HTMLElement|null} opts.root
+ * @param {HTMLElement|null} [opts.formEl]
  * @param {HTMLElement|null} opts.viewWrap
  * @param {HTMLElement|null} opts.viewEl
  * @param {HTMLElement|null} opts.editWrap
  * @param {HTMLElement|null} opts.cmHost
- * @param {HTMLElement|null} opts.previewEl
+ * @param {HTMLDialogElement|null} [opts.previewDialog] — опционально (карточки истории без отдельного «Просмотра»)
+ * @param {HTMLElement|null} [opts.previewDialogBody]
+ * @param {HTMLButtonElement|null} [opts.previewToggleBtn]
  * @param {HTMLInputElement|null} opts.hiddenContent
- * @param {HTMLButtonElement|null} opts.doneBtn
  * @param {HTMLDialogElement|null} opts.linkModal
  * @param {HTMLSelectElement|null} opts.linkModuleSelect
  * @param {HTMLSelectElement|null} opts.linkEntitySelect
  * @param {HTMLButtonElement|null} opts.linkModalConfirm
  * @param {HTMLButtonElement|null} opts.linkModalCancel
- * @param {string} opts.entitiesUrl
- * @param {string} opts.resolveUrl
+ * @param {string} [opts.entitiesUrl]
+ * @param {string} [opts.resolveUrl]
+ * @param {string} [opts.globalApiKey] — например `noemaCardMarkup` для модалки карточки
+ * @param {string} [opts.cmRootMaxHeight] — max-height корня CodeMirror (по умолчанию 22rem)
+ * @param {HTMLElement} [opts.markupEditBoundary] — если задан, клик вне этой области сворачивает редактор в просмотр
  */
-export function bindCardMarkupEditor(opts) {
+export function bindNoemaMarkupField(opts) {
+    /** @type {import('@codemirror/view').EditorView|null} */
+    let cmView = null;
+    /** @type {(() => void)|null} */
+    let cmContextMenuCleanup = null;
+
     const {
+        formEl: formElOpt,
         viewWrap,
         viewEl,
         editWrap,
         cmHost,
-        previewEl,
+        previewDialog,
+        previewDialogBody,
+        previewToggleBtn,
         hiddenContent,
-        doneBtn,
         linkModal,
         linkModuleSelect,
         linkEntitySelect,
-        linkModalConfirm,
-        linkModalCancel,
+        linkModalConfirm: _linkModalConfirm,
+        linkModalCancel: _linkModalCancel,
         entitiesUrl,
         resolveUrl,
+        globalApiKey,
+        cmRootMaxHeight: cmRootMaxHeightOpt,
     } = opts;
 
-    if (!viewEl || !hiddenContent || !cmHost || !editWrap || !viewWrap) {
+    const cmRootMaxHeight = cmRootMaxHeightOpt ?? '22rem';
+
+    const formEl = formElOpt ?? document.getElementById('editForm');
+    const cmHostEl = cmHost ?? document.getElementById('editModalCmHost');
+    if (!viewEl || !hiddenContent || !editWrap || !viewWrap || !cmHostEl) {
         return;
     }
 
-    /** @type {Map<string, { title: string, description: string, image_url: string|null }>} */
-    const previewCache = new Map();
-
-    /** @type {HTMLElement|null} */
-    let tooltipEl = null;
-
-    function ensureTooltip() {
-        if (tooltipEl) {
-            return tooltipEl;
-        }
-        tooltipEl = document.createElement('div');
-        tooltipEl.className =
-            'noema-entity-tooltip pointer-events-none fixed z-[100] max-w-xs rounded border border-base-300 bg-base-200 p-2 text-sm shadow-lg opacity-0 transition-opacity';
-        tooltipEl.setAttribute('role', 'tooltip');
-        tooltipEl.style.display = 'none';
-        document.body.appendChild(tooltipEl);
-        return tooltipEl;
+    if (linkModal && entitiesUrl) {
+        linkModal.dataset.markupEntitiesUrl = entitiesUrl;
     }
+    ensureLinkModalShared(linkModal);
 
-    /**
-     * @param {string} key
-     */
-    async function getPreview(key) {
-        if (previewCache.has(key)) {
-            return previewCache.get(key);
-        }
-        const [mod, ent] = key.split(':').map((x) => parseInt(x, 10));
-        const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
-        const res = await fetch(resolveUrl, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                Accept: 'application/json',
-                'X-CSRF-TOKEN': token || '',
-                'X-Requested-With': 'XMLHttpRequest',
-            },
-            body: JSON.stringify({ refs: [{ module: mod, entity: ent }] }),
-        });
-        if (!res.ok) {
-            return null;
-        }
-        const data = await res.json();
-        const p = data.previews?.[key] ?? null;
-        if (p) {
-            previewCache.set(key, p);
-        }
-        return p;
-    }
-
-    /**
-     * @param {HTMLElement} container
-     */
-    function bindTooltipHosts(container) {
-        container.querySelectorAll('a.noema-entity-link').forEach((a) => {
-            if (a.dataset.noemaTooltipBound) {
-                return;
-            }
-            a.dataset.noemaTooltipBound = '1';
-            a.addEventListener('click', (e) => e.preventDefault());
-            a.addEventListener('mouseenter', async (e) => {
-                const el = /** @type {HTMLElement} */ (e.currentTarget);
-                const mod = el.getAttribute('data-noema-module');
-                const ent = el.getAttribute('data-noema-entity');
-                if (!mod || !ent) {
-                    return;
-                }
-                const key = `${mod}:${ent}`;
-                const tip = ensureTooltip();
-                const p = await getPreview(key);
-                if (!p) {
-                    tip.innerHTML =
-                        '<p class="text-base-content/70">Нет данных</p>';
-                } else {
-                    const img = p.image_url
-                        ? `<img src="${escapeAttr(p.image_url)}" alt="" class="mb-2 max-h-24 w-full object-contain" loading="lazy" />`
-                        : '';
-                    tip.innerHTML = `${img}<div class="font-medium">${escapeHtml(
-                        p.title || ''
-                    )}</div><p class="mt-1 text-xs text-base-content/80">${escapeHtml(
-                        p.description || ''
-                    )}</p>`;
-                }
-                tip.style.display = 'block';
-                tip.style.opacity = '0';
-                const r = el.getBoundingClientRect();
-                tip.style.left = `${Math.min(r.left, window.innerWidth - 320)}px`;
-                tip.style.top = `${r.bottom + 8}px`;
-                requestAnimationFrame(() => {
-                    tip.style.opacity = '1';
-                });
-            });
-            a.addEventListener('mouseleave', () => {
-                if (tooltipHideTimer) {
-                    clearTimeout(tooltipHideTimer);
-                }
-                tooltipHideTimer = setTimeout(() => {
-                    const tip = ensureTooltip();
-                    tip.style.opacity = '0';
-                    tip.style.display = 'none';
-                }, 120);
-            });
-        });
-    }
-
-    function escapeHtml(s) {
-        return s
-            .replace(/&/g, '&amp;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;');
-    }
-
-    function escapeAttr(s) {
-        return String(s).replace(/"/g, '&quot;');
+    function tooltipMountEl() {
+        return cmHostEl.closest('dialog') ?? document.body;
     }
 
     function renderViewFromSource(source) {
         const { html } = parseAndRenderHtml(source);
         viewEl.innerHTML = html || '<span class="text-base-content/40">(пусто)</span>';
-        bindTooltipHosts(viewEl);
+        bindEntityLinkTooltips(viewEl, resolveUrl, tooltipMountEl());
     }
 
-    function renderPreviewFromSource(source) {
-        if (!previewEl) {
+    function renderPreviewDialogContent(source) {
+        if (!previewDialogBody) {
             return;
         }
         const { html } = parseAndRenderHtml(source);
-        previewEl.innerHTML =
+        previewDialogBody.innerHTML =
             html ||
-            '<span class="text-base-content/40">Превью появится после ввода разметки</span>';
-        bindTooltipHosts(previewEl);
+            '<span class="text-base-content/40">(пусто)</span>';
+        const previewMount =
+            previewDialog instanceof HTMLElement ? previewDialog : tooltipMountEl();
+        bindEntityLinkTooltips(previewDialogBody, resolveUrl, previewMount);
     }
 
     function emitContentInput() {
@@ -285,38 +346,154 @@ export function bindCardMarkupEditor(opts) {
 
     function destroyCm() {
         if (cmView) {
+            if (cmContextMenuCleanup) {
+                cmContextMenuCleanup();
+                cmContextMenuCleanup = null;
+            }
             cmView.destroy();
             cmView = null;
+        }
+        if (cmHostEl) {
+            cmHostEl.innerHTML = '';
         }
     }
 
     function initCm(initialValue) {
         destroyCm();
-        cmHost.innerHTML = '';
-        cmView = new EditorView({
-            doc: initialValue,
-            extensions: [
-                basicSetup,
-                noemaHighlightPlugin(),
-                EditorView.theme({
-                    '&': { maxHeight: '22rem' },
-                    '.cm-scroller': { fontFamily: 'ui-monospace, monospace', fontSize: '13px' },
-                    '.cm-noema-tag': { color: 'var(--color-accent, #7c3aed)' },
-                    '.cm-noema-escape': { color: 'var(--color-base-content, #ccc)', opacity: 0.55 },
-                }),
-                EditorView.updateListener.of((u) => {
-                    if (u.docChanged && hiddenContent) {
-                        hiddenContent.value = u.state.doc.toString();
-                        emitContentInput();
-                        renderPreviewFromSource(hiddenContent.value);
+        try {
+            const view = new EditorView({
+                doc: initialValue,
+                extensions: [
+                    ...noemaMarkupEditorExtensions,
+                    EditorView.lineWrapping,
+                    noemaHighlightPlugin(),
+                    EditorView.theme({
+                        '&': { maxHeight: cmRootMaxHeight },
+                        '.cm-scroller': {
+                            fontFamily: 'ui-monospace, monospace',
+                            fontSize: '13px',
+                            overflowX: 'hidden',
+                        },
+                        '.cm-content': {
+                            caretColor: 'var(--color-base-content, #f4f4f5)',
+                        },
+                        '.cm-noema-tag': { color: 'var(--color-accent, #7c3aed)' },
+                        '.cm-noema-escape': { color: 'var(--color-base-content, #ccc)', opacity: 0.55 },
+                        '.cm-activeLine': { backgroundColor: 'transparent' },
+                        '.cm-activeLineGutter': { backgroundColor: 'transparent' },
+                        '.cm-cursor, .cm-dropCursor': {
+                            borderLeft: '2px solid var(--color-base-content, #f4f4f5)',
+                            marginLeft: '-1px',
+                        },
+                        '&.cm-focused > .cm-scroller > .cm-cursorLayer': {
+                            animation: 'none',
+                        },
+                        '&.cm-focused > .cm-scroller > .cm-cursorLayer .cm-cursor': {
+                            display: 'block',
+                            opacity: '1',
+                        },
+                        '&.cm-focused > .cm-scroller > .cm-selectionLayer .cm-selectionBackground': {
+                            background: 'color-mix(in oklab, var(--color-primary, #8b5cf6) 30%, transparent)',
+                        },
+                    }),
+                    EditorView.updateListener.of((u) => {
+                        if (u.docChanged && hiddenContent) {
+                            hiddenContent.value = u.state.doc.toString();
+                            emitContentInput();
+                            if (previewDialogBody && previewDialog?.open) {
+                                renderPreviewDialogContent(hiddenContent.value);
+                            }
+                        }
+                    }),
+                ],
+                parent: cmHostEl,
+            });
+            cmView = view;
+
+            const openCtx = (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                showCtxMenu(e.clientX, e.clientY);
+            };
+            const onPointerDown = (e) => {
+                if (e.button !== 2) {
+                    return;
+                }
+                openCtx(e);
+            };
+            /** Панель форматирования сразу после выделения (мышь/тач); правый клик по-прежнему открывает то же меню в точке клика. */
+            const onEditorPointerUp = (e) => {
+                if (e.pointerType === 'mouse' && e.button !== 0) {
+                    return;
+                }
+                if (activeCtxMenuEl?.contains(/** @type {Node} */ (e.target))) {
+                    return;
+                }
+                requestAnimationFrame(() => {
+                    if (!cmView) {
+                        return;
                     }
-                }),
-            ],
-            parent: cmHost,
-        });
+                    if (e.target != null && !cmView.dom.contains(/** @type {Node} */ (e.target))) {
+                        return;
+                    }
+                    const sel = cmView.state.selection.main;
+                    if (sel.from === sel.to) {
+                        hideActiveCtxMenu();
+                        return;
+                    }
+                    const coords = cmView.coordsAtPos(sel.head);
+                    if (!coords) {
+                        return;
+                    }
+                    showCtxMenu((coords.left + coords.right) / 2, coords.bottom + 8);
+                });
+            };
+            const onScrollerScroll = () => {
+                hideActiveCtxMenu();
+            };
+            const dom = view.dom;
+            dom.addEventListener('contextmenu', openCtx, { capture: true });
+            dom.addEventListener('pointerdown', onPointerDown, { capture: true });
+            dom.addEventListener('pointerup', onEditorPointerUp);
+            view.scrollDOM.addEventListener('scroll', onScrollerScroll, { passive: true });
+            cmContextMenuCleanup = () => {
+                dom.removeEventListener('contextmenu', openCtx, { capture: true });
+                dom.removeEventListener('pointerdown', onPointerDown, { capture: true });
+                dom.removeEventListener('pointerup', onEditorPointerUp);
+                view.scrollDOM.removeEventListener('scroll', onScrollerScroll);
+            };
+            requestAnimationFrame(() => {
+                view.requestMeasure();
+            });
+        } catch (err) {
+            try {
+                window.__noemaCmInitError = err instanceof Error ? err : new Error(String(err));
+            } catch {
+                /* ignore */
+            }
+            console.error('Noema markup editor init failed', err);
+            const ta = document.createElement('textarea');
+            ta.setAttribute('data-noema-markup-fallback', '1');
+            ta.className =
+                'textarea textarea-bordered w-full rounded-none bg-base-200 border-base-300 font-mono text-sm min-h-[12rem] whitespace-pre-wrap break-words';
+            ta.value = initialValue;
+            ta.addEventListener('input', () => {
+                if (hiddenContent) {
+                    hiddenContent.value = ta.value;
+                    emitContentInput();
+                }
+                if (previewDialogBody && previewDialog?.open) {
+                    renderPreviewDialogContent(hiddenContent.value);
+                }
+            });
+            cmHostEl.appendChild(ta);
+        }
     }
 
     function showViewMode() {
+        if (previewDialog) {
+            previewDialog.close();
+        }
         if (hiddenContent) {
             renderViewFromSource(hiddenContent.value);
         }
@@ -325,22 +502,42 @@ export function bindCardMarkupEditor(opts) {
     }
 
     function showEditMode() {
+        viewWrap.classList.add('hidden');
+        editWrap.classList.remove('hidden');
+        const fallbackTa = cmHostEl?.querySelector('textarea[data-noema-markup-fallback]');
+        if (fallbackTa) {
+            requestAnimationFrame(() => fallbackTa.focus());
+            return;
+        }
         if (!cmView) {
-            initCm(hiddenContent?.value ?? '');
+            requestAnimationFrame(() => {
+                requestAnimationFrame(() => {
+                    initCm(hiddenContent?.value ?? '');
+                    requestAnimationFrame(() => {
+                        cmView?.requestMeasure?.();
+                        cmView?.focus();
+                        const ta = cmHostEl?.querySelector('textarea[data-noema-markup-fallback]');
+                        ta?.focus();
+                    });
+                });
+            });
         } else {
             cmView.dispatch({
                 changes: { from: 0, to: cmView.state.doc.length, insert: hiddenContent?.value ?? '' },
             });
+            requestAnimationFrame(() => {
+                cmView?.requestMeasure?.();
+                cmView?.focus();
+            });
         }
-        viewWrap.classList.add('hidden');
-        editWrap.classList.remove('hidden');
-        renderPreviewFromSource(hiddenContent?.value ?? '');
-        requestAnimationFrame(() => cmView?.focus());
     }
 
-    window.noemaCardMarkup = {
+    const api = {
         /** @param {string} content */
         syncFromServer(content) {
+            if (previewDialog) {
+                previewDialog.close();
+            }
             if (hiddenContent) {
                 hiddenContent.value = content;
                 emitContentInput();
@@ -356,47 +553,123 @@ export function bindCardMarkupEditor(opts) {
             return hiddenContent?.value ?? '';
         },
         syncBeforeSubmit() {
-            if (editWrap && !editWrap.classList.contains('hidden') && cmView) {
-                hiddenContent.value = cmView.state.doc.toString();
+            if (editWrap && !editWrap.classList.contains('hidden')) {
+                if (cmView) {
+                    hiddenContent.value = cmView.state.doc.toString();
+                } else {
+                    const ta = cmHostEl?.querySelector('textarea[data-noema-markup-fallback]');
+                    if (ta) {
+                        hiddenContent.value = ta.value;
+                    }
+                }
             }
         },
         destroyCm,
     };
 
-    viewEl.addEventListener('dblclick', (e) => {
-        e.preventDefault();
-        showEditMode();
-    });
-
-    doneBtn?.addEventListener('click', () => {
-        if (cmView) {
-            hiddenContent.value = cmView.state.doc.toString();
+    const markupEditBoundary = opts.markupEditBoundary;
+    if (markupEditBoundary != null && typeof markupEditBoundary.contains === 'function') {
+        function eventTargetInsideBoundary(e) {
+            if (typeof e.composedPath === 'function') {
+                for (const node of e.composedPath()) {
+                    if (node === markupEditBoundary) {
+                        return true;
+                    }
+                    if (node instanceof Node && markupEditBoundary.contains(node)) {
+                        return true;
+                    }
+                }
+                return false;
+            }
+            let t = e.target;
+            if (t && t.nodeType === Node.TEXT_NODE) {
+                t = t.parentElement;
+            }
+            return t instanceof Node && markupEditBoundary.contains(t);
         }
-        emitContentInput();
-        showViewMode();
-    });
 
-    /** @type {HTMLElement|null} */
-    let ctxMenu = null;
-
-    function hideCtxMenu() {
-        if (ctxMenu) {
-            ctxMenu.remove();
-            ctxMenu = null;
+        function onMaybeCollapseToViewMode(e) {
+            if (e.button !== 0) {
+                return;
+            }
+            if (!editWrap || editWrap.classList.contains('hidden')) {
+                return;
+            }
+            if (eventTargetInsideBoundary(e)) {
+                return;
+            }
+            const rawT = e.target;
+            const t =
+                rawT && rawT.nodeType === Node.TEXT_NODE ? rawT.parentElement : rawT;
+            if (t instanceof Node && activeCtxMenuEl?.contains(t)) {
+                return;
+            }
+            if (
+                linkModal instanceof HTMLDialogElement &&
+                linkModal.open &&
+                t instanceof Node &&
+                linkModal.contains(t)
+            ) {
+                return;
+            }
+            if (t instanceof Element && t.closest?.('.dropdown-content')) {
+                return;
+            }
+            api.syncBeforeSubmit();
+            showViewMode();
         }
+
+        /** Как клик вне области: Esc сворачивает редактор в просмотр (не закрывает родительский диалог модалки карточки). */
+        function onEscapeCollapseToViewMode(e) {
+            if (e.key !== 'Escape') {
+                return;
+            }
+            if (!editWrap || editWrap.classList.contains('hidden')) {
+                return;
+            }
+            if (linkModal instanceof HTMLDialogElement && linkModal.open) {
+                return;
+            }
+            if (previewDialog instanceof HTMLDialogElement && previewDialog.open) {
+                return;
+            }
+            const ae = document.activeElement;
+            if (ae && linkModal instanceof HTMLDialogElement && linkModal.contains(ae)) {
+                return;
+            }
+            if (ae instanceof Element && ae.closest?.('.dropdown-content')) {
+                return;
+            }
+            hideActiveCtxMenu();
+            e.preventDefault();
+            e.stopPropagation();
+            api.syncBeforeSubmit();
+            showViewMode();
+        }
+
+        document.addEventListener('mousedown', onMaybeCollapseToViewMode, true);
+        document.addEventListener('pointerdown', onMaybeCollapseToViewMode, true);
+        document.addEventListener('keydown', onEscapeCollapseToViewMode, true);
+        formEl?.addEventListener('mousedown', onMaybeCollapseToViewMode, true);
+        formEl?.addEventListener('pointerdown', onMaybeCollapseToViewMode, true);
+    }
+
+    if (globalApiKey) {
+        window[globalApiKey] = api;
     }
 
     function showCtxMenu(x, y) {
-        hideCtxMenu();
+        hideActiveCtxMenu();
         if (!cmView) {
             return;
         }
-        ctxMenu = document.createElement('div');
+        const ctxMenu = document.createElement('div');
+        activeCtxMenuEl = ctxMenu;
         ctxMenu.className =
-            'fixed z-[9999] flex gap-0.5 rounded border border-base-300 bg-base-200 p-1 shadow-lg';
+            'fixed z-[100000] flex gap-0.5 rounded border border-base-300 bg-base-200 p-1 shadow-lg';
         ctxMenu.style.left = `${x}px`;
         ctxMenu.style.top = `${y}px`;
-        const mkBtn = (label, title, svgPath, fn) => {
+        const mkBtn = (title, svgPath, fn) => {
             const b = document.createElement('button');
             b.type = 'button';
             b.title = title;
@@ -404,7 +677,7 @@ export function bindCardMarkupEditor(opts) {
             b.innerHTML = svgPath;
             b.addEventListener('click', () => {
                 fn();
-                hideCtxMenu();
+                hideActiveCtxMenu();
             });
             return b;
         };
@@ -415,17 +688,18 @@ export function bindCardMarkupEditor(opts) {
             underline:
                 '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M6 4v6a6 6 0 0 0 12 0V4"/><line x1="4" y1="20" x2="20" y2="20"/></svg>',
             strike:
-                '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><line x1="16" y1="4" x2="8" y2="4"/><line x1="12" y1="12" x2="8" y2="12"/><line x1="20" y1="12" x2="8" y2="12"/><line x1="20" y1="20" x2="4" y2="20"/></svg>',
+                '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 4H9a3 3 0 0 0-2.83 4"/><path d="M14 12a4 4 0 0 1 0 8H6"/><line x1="4" y1="12" x2="20" y2="12"/></svg>',
             link: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>',
         };
         ctxMenu.append(
-            mkBtn('B', 'Жирный', svg.bold, () => wrapSelection(cmView, '[b]', '[/b]')),
-            mkBtn('I', 'Курсив', svg.italic, () => wrapSelection(cmView, '[i]', '[/i]')),
-            mkBtn('U', 'Подчёркнутый', svg.underline, () => wrapSelection(cmView, '[u]', '[/u]')),
-            mkBtn('S', 'Зачёркнутый', svg.strike, () => wrapSelection(cmView, '[s]', '[/s]')),
-            mkBtn('↗', 'Ссылка на сущность', svg.link, () => openLinkModal())
+            mkBtn('Жирный', svg.bold, () => wrapSelection(cmView, '[b]', '[/b]')),
+            mkBtn('Курсив', svg.italic, () => wrapSelection(cmView, '[i]', '[/i]')),
+            mkBtn('Подчёркнутый', svg.underline, () => wrapSelection(cmView, '[u]', '[/u]')),
+            mkBtn('Зачёркнутый', svg.strike, () => wrapSelection(cmView, '[s]', '[/s]')),
+            mkBtn('Ссылка на сущность', svg.link, () => openLinkModal())
         );
-        document.body.appendChild(ctxMenu);
+        const menuRoot = cmHostEl.closest('dialog') ?? document.body;
+        menuRoot.appendChild(ctxMenu);
         ctxMenu.addEventListener('click', (e) => e.stopPropagation());
         const clamp = () => {
             const r = ctxMenu.getBoundingClientRect();
@@ -439,21 +713,15 @@ export function bindCardMarkupEditor(opts) {
         requestAnimationFrame(clamp);
     }
 
-    document.addEventListener('click', hideCtxMenu);
-
-    cmHost?.addEventListener('contextmenu', (e) => {
-        if (editWrap.classList.contains('hidden')) {
+    function openLinkModal() {
+        hideActiveCtxMenu();
+        if (!entitiesUrl || !resolveUrl) {
             return;
         }
-        e.preventDefault();
-        showCtxMenu(e.clientX, e.clientY);
-    });
-
-    function openLinkModal() {
-        hideCtxMenu();
         if (!linkModal || !linkModuleSelect || !linkEntitySelect) {
             return;
         }
+        pendingLinkCmView = cmView;
         linkModuleSelect.innerHTML = '';
         for (const o of MODULE_OPTIONS) {
             const opt = document.createElement('option');
@@ -463,62 +731,63 @@ export function bindCardMarkupEditor(opts) {
         }
         linkEntitySelect.innerHTML = '<option value="">—</option>';
         linkModal.showModal();
-        loadEntitiesForModule(parseInt(linkModuleSelect.value, 10));
+        loadEntitiesForModuleShared(
+            linkEntitySelect,
+            parseInt(linkModuleSelect.value, 10),
+            entitiesUrl
+        );
     }
 
-    async function loadEntitiesForModule(mod) {
-        if (!linkEntitySelect || !entitiesUrl) {
+    const openFromPreview = (e) => {
+        if (e.button !== 0) {
             return;
         }
-        linkEntitySelect.innerHTML = '<option value="">Загрузка…</option>';
-        const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
-        const url = new URL(entitiesUrl, window.location.origin);
-        url.searchParams.set('module', String(mod));
-        const res = await fetch(url.toString(), {
-            headers: {
-                Accept: 'application/json',
-                'X-Requested-With': 'XMLHttpRequest',
-                'X-CSRF-TOKEN': token || '',
-            },
+        const t = e.target;
+        if (!(t instanceof Node) || !viewEl.contains(t)) {
+            return;
+        }
+        showEditMode();
+    };
+    formEl?.addEventListener('pointerdown', openFromPreview, true);
+
+    if (previewToggleBtn && previewDialog && previewDialogBody) {
+        previewToggleBtn.addEventListener('click', () => {
+            let text = '';
+            if (cmView) {
+                text = cmView.state.doc.toString();
+            } else {
+                const ta = cmHostEl?.querySelector('textarea[data-noema-markup-fallback]');
+                if (!ta) {
+                    return;
+                }
+                text = ta.value;
+            }
+            hiddenContent.value = text;
+            emitContentInput();
+            renderPreviewDialogContent(text);
+            previewDialog.showModal();
         });
-        const data = res.ok ? await res.json() : { items: [] };
-        linkEntitySelect.innerHTML = '<option value="">— выберите —</option>';
-        for (const it of data.items || []) {
-            const opt = document.createElement('option');
-            opt.value = String(it.id);
-            opt.textContent = it.label;
-            linkEntitySelect.appendChild(opt);
-        }
+
+        previewDialog.querySelectorAll('[data-markup-preview-close]').forEach((el) => {
+            el.addEventListener('click', () => previewDialog.close());
+        });
     }
 
-    linkModuleSelect?.addEventListener('change', () => {
-        loadEntitiesForModule(parseInt(linkModuleSelect.value, 10));
+    formEl?.addEventListener('submit', () => {
+        api.syncBeforeSubmit();
     });
 
-    linkModalConfirm?.addEventListener('click', () => {
-        if (!cmView || !linkModuleSelect || !linkEntitySelect) {
-            return;
-        }
-        const mod = parseInt(linkModuleSelect.value, 10);
-        const ent = parseInt(linkEntitySelect.value, 10);
-        if (!Number.isFinite(ent) || ent < 1) {
-            return;
-        }
-        const open = `[link module=${mod} entity=${ent}]`;
-        const close = '[/link]';
-        wrapSelection(cmView, open, close);
-        linkModal?.close();
-    });
+    renderViewFromSource(hiddenContent?.value ?? '');
+}
 
-    linkModalCancel?.addEventListener('click', () => {
-        linkModal?.close();
-    });
-
-    linkModal?.querySelectorAll('[data-link-modal-close]').forEach((el) => {
-        el.addEventListener('click', () => linkModal?.close());
-    });
-
-    document.getElementById('editForm')?.addEventListener('submit', () => {
-        window.noemaCardMarkup?.syncBeforeSubmit();
+/**
+ * Редактор в модалке карточки истории (глобальный API window.noemaCardMarkup).
+ * @param {object} opts
+ */
+export function bindCardMarkupEditor(opts) {
+    return bindNoemaMarkupField({
+        ...opts,
+        formEl: opts.formEl ?? document.getElementById('editForm'),
+        globalApiKey: 'noemaCardMarkup',
     });
 }

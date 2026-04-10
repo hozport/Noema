@@ -80,8 +80,11 @@
             line-height: 1.25 !important;
             margin: 0;
         }
+        /* max-height ≈ 5 строк: без -webkit-line-clamp — он плохо дружит с несколькими <p> внутри */
         .story-card-preview { color: #4b5563 !important; font-size: 0.875rem; line-height: 1.35; margin-top: 0.5rem;
-            display: -webkit-box; -webkit-line-clamp: 5; -webkit-box-orient: vertical; overflow: hidden; }
+            max-height: calc(0.875rem * 1.35 * 5 + 0.25rem); overflow: hidden; }
+        .story-card-preview-p { margin: 0 0 0.35em 0; }
+        .story-card-preview-p:last-child { margin-bottom: 0; }
         /* Как .world-card-enter у карточек миров */
         .story-card-more {
             width: 100% !important;
@@ -91,8 +94,9 @@
             font-weight: 500 !important;
         }
 
-        /* Модалки: весь экран без полосы от 100vw/скроллбара */
-        .story-dialog {
+        /* Модалки: весь экран без полосы от 100vw/скроллбара (.story-settings-dialog — только настройки истории; .story-dialog — карточка, ссылки и пр.) */
+        .story-dialog,
+        .story-settings-dialog {
             position: fixed !important;
             inset: 0 !important;
             width: 100% !important;
@@ -106,9 +110,12 @@
             overflow: hidden !important;
             box-sizing: border-box !important;
         }
-        .story-dialog::backdrop { background: rgba(0,0,0,0.55); }
-        .story-dialog:not([open]) { display: none !important; }
-        .story-dialog[open] { display: block !important; }
+        .story-dialog::backdrop,
+        .story-settings-dialog::backdrop { background: rgba(0,0,0,0.55); }
+        .story-dialog:not([open]),
+        .story-settings-dialog:not([open]) { display: none !important; }
+        .story-dialog[open],
+        .story-settings-dialog[open] { display: block !important; }
         .story-dialog__viewport {
             position: relative;
             width: 100%;
@@ -160,28 +167,116 @@
         .story-cards-stat { margin-top: 2.5rem; }
         .story-page-synopsis {
             margin-top: 40px;
-            max-width: 48rem;
+            width: 100%;
+            max-width: none;
         }
         .story-synopsis-stat-divider {
             border: none;
             border-top: 1px solid rgba(255, 255, 255, 0.12);
             margin: 24px 0;
-            max-width: 48rem;
+            width: 100%;
+            max-width: none;
         }
         .story-synopsis-stat-divider + .story-cards-stat {
             margin-top: 0;
         }
-        .noema-markup-view a.noema-entity-link {
-            color: #4f46e5;
-            text-decoration: underline;
-            cursor: help;
+        .story-book-ornament {
+            padding: 100px 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            width: 100%;
         }
-        .noema-markup-view strong { font-weight: 700; }
-        .noema-markup-view em { font-style: italic; }
-        .noema-markup-view u { text-decoration: underline; }
-        .noema-markup-view s { text-decoration: line-through; }
+        .story-book-ornament__icon {
+            width: 56px;
+            height: 56px;
+            flex-shrink: 0;
+        }
+        .story-book-ornament + .story-page-synopsis {
+            margin-top: 0;
+        }
+        .story-book-ornament + .story-cards-stat {
+            margin-top: 0;
+        }
+        /* Переключатель «отображение карточек»: без рамки, цвета темы */
+        .story-card-display-mode-row {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 0.65rem 1rem;
+            justify-content: flex-start;
+            width: 100%;
+        }
+        .story-card-display-mode-label {
+            font-size: 0.875rem;
+            line-height: 1.25rem;
+            color: color-mix(in oklab, var(--color-base-content) 88%, transparent);
+        }
+        .story-card-display-mode-switch {
+            position: relative;
+            display: inline-block;
+            width: 2.75rem;
+            height: 1.375rem;
+            flex-shrink: 0;
+            cursor: pointer;
+            vertical-align: middle;
+        }
+        .story-card-display-mode-input {
+            position: absolute;
+            inset: 0;
+            margin: 0;
+            opacity: 0;
+            width: 100%;
+            height: 100%;
+            cursor: pointer;
+            z-index: 2;
+        }
+        .story-card-display-mode-track {
+            display: block;
+            width: 100%;
+            height: 100%;
+            min-height: 1.375rem;
+            background-color: var(--color-base-300);
+            border: none;
+            border-radius: 0;
+            pointer-events: none;
+            position: relative;
+            z-index: 0;
+            transition: background-color 0.15s ease;
+        }
+        .story-card-display-mode-track::after {
+            content: '';
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            width: 1.125rem;
+            height: calc(100% - 4px);
+            min-height: 0.875rem;
+            background-color: var(--color-base-content);
+            opacity: 0.42;
+            border-radius: 0;
+            transition: transform 0.15s ease, opacity 0.15s ease;
+        }
+        .story-card-display-mode-input:checked + .story-card-display-mode-track {
+            background-color: color-mix(in oklab, var(--color-primary) 48%, var(--color-base-300));
+        }
+        .story-card-display-mode-input:checked + .story-card-display-mode-track::after {
+            transform: translateX(1.375rem);
+            opacity: 0.92;
+        }
+        .story-card-display-mode-input:focus-visible + .story-card-display-mode-track {
+            outline: 2px solid color-mix(in oklab, var(--color-primary) 65%, transparent);
+            outline-offset: 2px;
+        }
+        /* Стили разметки и ссылок на сущности — в resources/css/app.css (.noema-markup-view) */
         #editModalCmHost .cm-editor { min-height: 12rem; }
         #editModalCmHost .cm-scroller { max-height: 22rem; }
+        .card-page-pin-btn.card-page-pin-btn--active {
+            color: #dc2626 !important;
+        }
+        .card-page-pin-btn.card-page-pin-btn--active:hover {
+            color: #ef4444 !important;
+        }
     </style>
 </head>
 <body class="min-h-screen bg-base-100 flex flex-col">
@@ -217,7 +312,16 @@
                         <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
                     </svg>
                 </button>
-                @include('partials.activity-log-button', ['world' => $world])
+                <form method="POST" action="{{ route('cards.stories.destroy', [$world, $story]) }}" class="inline" onsubmit="return confirm('Удалить эту историю? Все её карточки будут удалены безвозвратно. Узлы с этими карточками на досках связей также исчезнут.');">
+                    @csrf
+                    @method('DELETE')
+                    <button type="submit" class="btn btn-ghost btn-square text-error" title="Удалить историю" aria-label="Удалить историю">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                        </svg>
+                    </button>
+                </form>
+                @include('partials.activity-log-button', ['world' => $world, 'story' => $story])
             </div>
         </div>
 
@@ -258,21 +362,31 @@
                             <div class="story-card-toolbar">
                                 <h3 class="story-card-title-display font-semibold min-w-0 line-clamp-2">{{ $card->displayTitle() }}</h3>
                             </div>
-                            @php
-                                $preview = $card->content ? Str::limit(str_replace("\n\n", ' ', $card->getPlainContentForPreview()), 100) : '';
-                            @endphp
-                            @if ($preview)
-                                <p class="story-card-preview">{{ $preview }}</p>
+                            @if (filled($card->content))
+                                <div class="story-card-preview noema-markup-view">{!! $card->getMarkupHtmlParagraphsForGrid() !!}</div>
                             @endif
                         </div>
-                        <button type="button" class="story-card-more btn btn-primary btn-sm rounded-none shrink-0" title="Подробнее — открыть редактирование карточки" onclick="openEditModal(this, {{ json_encode(route('cards.update', [$world, $card])) }}, {{ json_encode($card->title) }}, {{ json_encode($card->content ?? '') }}, {{ (int) $card->number }}, {{ json_encode(route('cards.decompose', [$world, $card])) }}, {{ json_encode(route('cards.destroy', [$world, $card])) }}, {{ json_encode(route('cards.highlight', [$world, $card])) }})">
-                            Подробнее
-                        </button>
+                        @if (($story->card_display_mode ?? \App\Models\Cards\Story::CARD_DISPLAY_MODAL) === \App\Models\Cards\Story::CARD_DISPLAY_PAGE)
+                            <a href="{{ route('cards.card.edit', [$world, $story, $card]) }}" class="story-card-more btn btn-primary btn-sm rounded-none shrink-0 inline-flex items-center justify-center no-underline" title="Подробнее — открыть страницу карточки">
+                                Подробнее
+                            </a>
+                        @else
+                            <button type="button" class="story-card-more btn btn-primary btn-sm rounded-none shrink-0" title="Подробнее — открыть редактирование карточки" onclick="openEditModal(this, {{ json_encode(route('cards.update', [$world, $card])) }}, {{ json_encode($card->title) }}, {{ json_encode($card->content ?? '') }}, {{ (int) $card->number }}, {{ json_encode(route('cards.decompose', [$world, $card])) }}, {{ json_encode(route('cards.destroy', [$world, $card])) }})">
+                                Подробнее
+                            </button>
+                        @endif
                     </div>
                 </div>
             @endforeach
         </div>
         @endif
+
+        <div class="story-book-ornament" role="presentation" aria-hidden="true">
+            <svg class="story-book-ornament__icon text-base-content/35" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/>
+                <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>
+            </svg>
+        </div>
 
         @if (filled($story->synopsis))
             <section class="story-page-synopsis" aria-labelledby="story-synopsis-heading">
@@ -282,16 +396,19 @@
             <hr class="story-synopsis-stat-divider" aria-hidden="true">
         @endif
 
-        <p class="story-cards-stat text-sm text-base-content/75">Количество карточек: {{ $story->cards->count() }}</p>
+        <p class="story-cards-stat text-sm text-base-content/75 w-full max-w-none">Количество карточек: {{ $story->cards->count() }}</p>
         </div>
     </main>
 
-    <dialog id="storySettingsModal" class="story-dialog" aria-labelledby="story-settings-heading">
+    <dialog id="storySettingsModal" class="story-settings-dialog" aria-labelledby="story-settings-heading">
         <div class="story-dialog__viewport">
             <div class="story-dialog__scrim" data-story-settings-close tabindex="-1" aria-hidden="true"></div>
             <form method="POST" action="{{ route('cards.stories.update', [$world, $story]) }}" class="story-dialog__panel" onclick="event.stopPropagation()">
                 @csrf
                 @method('PUT')
+                @php
+                    $cardDisplayMode = old('card_display_mode', $story->card_display_mode ?: \App\Models\Cards\Story::CARD_DISPLAY_MODAL);
+                @endphp
                 <h2 id="story-settings-heading" class="text-xl font-semibold mb-4 pr-8">Настройки истории</h2>
                 <label for="storySettingsName" class="story-dialog__field-label block text-sm text-base-content/70 mb-1">Название</label>
                 <input type="text" name="name" id="storySettingsName" value="{{ old('name', $story->name) }}" required maxlength="255"
@@ -305,13 +422,12 @@
                 <label for="storySettingsCycle" class="block text-sm text-base-content/70 mb-1 mt-4">Цикл</label>
                 <input type="text" name="cycle" id="storySettingsCycle" value="{{ old('cycle', $story->cycle) }}" list="story-settings-cycle-datalist" maxlength="255" placeholder="Выберите из списка или введите свой"
                     class="input input-bordered w-full rounded-none bg-base-200 border-base-300 @error('cycle') input-error @enderror"
-                    aria-describedby="storySettingsCycle-desc">
+                    aria-describedby="storySettingsCycleCounter">
                 <datalist id="story-settings-cycle-datalist">
                     @foreach ($storyCycles as $c)
                         <option value="{{ $c }}"></option>
                     @endforeach
                 </datalist>
-                <p id="storySettingsCycle-desc" class="text-xs text-base-content/50 mt-1">Необязательно. Циклы из других историй этого мира можно выбрать из списка.</p>
                 <p id="storySettingsCycleCounter" class="text-xs text-right mt-1 tabular-nums" aria-live="polite"></p>
                 @error('cycle')
                     <p class="text-error text-sm mt-1">{{ $message }}</p>
@@ -319,12 +435,28 @@
                 <label for="storySettingsSynopsis" class="block text-sm text-base-content/70 mb-1 mt-4">Синопсис</label>
                 <textarea name="synopsis" id="storySettingsSynopsis" rows="6" placeholder="Краткое описание истории (необязательно)"
                     class="textarea textarea-bordered w-full rounded-none bg-base-200 border-base-300 resize-y min-h-[8rem] @error('synopsis') textarea-error @enderror"
-                    aria-describedby="storySettingsSynopsis-desc">{{ old('synopsis', $story->synopsis) }}</textarea>
-                <p id="storySettingsSynopsis-desc" class="text-xs text-base-content/50 mt-1">Краткое описание; длинные тексты допустимы. Мягкий ориентир — до ~8000 знаков.</p>
+                    aria-describedby="storySettingsSynopsisCounter">{{ old('synopsis', $story->synopsis) }}</textarea>
                 <p id="storySettingsSynopsisCounter" class="text-xs text-right mt-1 tabular-nums" aria-live="polite"></p>
                 @error('synopsis')
                     <p class="text-error text-sm mt-1">{{ $message }}</p>
                 @enderror
+
+                <input type="hidden" name="card_display_mode" id="storySettingsCardDisplayMode" value="{{ $cardDisplayMode }}">
+
+                <h3 class="text-sm font-medium text-base-content/70 mt-6 mb-3">Отображение карточек</h3>
+                <div class="story-card-display-mode-row" role="group" aria-labelledby="story-settings-card-display-label">
+                    <span id="story-settings-card-display-label" class="sr-only">Способ отображения карточек</span>
+                    <span class="story-card-display-mode-label">В модальном окне</span>
+                    <label class="story-card-display-mode-switch">
+                        <input type="checkbox" id="storySettingsCardDisplayToggle" class="story-card-display-mode-input" aria-label="Переключить: модальное окно или отдельная страница" @checked($cardDisplayMode === \App\Models\Cards\Story::CARD_DISPLAY_PAGE)>
+                        <span class="story-card-display-mode-track"></span>
+                    </label>
+                    <span class="story-card-display-mode-label">На отдельной странице</span>
+                </div>
+                @error('card_display_mode')
+                    <p class="text-error text-sm mt-2">{{ $message }}</p>
+                @enderror
+
                 <div class="mt-6 flex flex-row-reverse flex-wrap gap-2 justify-end">
                     <button type="submit" id="storySettingsSubmitBtn" class="btn btn-primary rounded-none">Сохранить</button>
                     <button type="button" class="btn btn-ghost rounded-none" data-story-settings-close>Отмена</button>
@@ -336,47 +468,52 @@
         </div>
     </dialog>
 
-    <dialog id="editModal" class="story-dialog" aria-label="Редактирование карточки">
+    <dialog id="editModal" class="story-dialog" aria-label="Редактирование карточки"
+        data-world-id="{{ $world->id }}" data-story-id="{{ $story->id }}"
+        data-markup-entities-url="{{ route('worlds.markup.entities', $world) }}"
+        data-markup-resolve-url="{{ route('worlds.markup.resolve', $world) }}">
         <div class="story-dialog__viewport">
             <div class="story-dialog__scrim" data-edit-modal-close tabindex="-1" aria-hidden="true"></div>
             <form method="POST" action="" id="editForm" class="story-dialog__panel" onclick="event.stopPropagation()">
                 @csrf
                 @method('PUT')
+                <input type="hidden" name="is_highlighted" id="editModalHighlightField" value="0">
                 <label for="editModalTitleInput" class="story-dialog__field-label block text-sm text-base-content/70 mb-1">Название</label>
                 <input type="text" name="title" id="editModalTitleInput" maxlength="255"
                     class="input input-bordered w-full rounded-none bg-base-200 border-base-300"
                     aria-describedby="editModalTitleInput-desc">
                 <p id="editModalTitleInput-desc" class="text-xs text-base-content/50 mt-1">Необязательно; пустое имя на карточке показывается как «Карточка N». До 255 символов.</p>
                 <p id="editModalTitleCounter" class="text-xs text-right mt-1 tabular-nums" aria-live="polite"></p>
-                <label for="editModalMarkupView" class="block text-sm text-base-content/70 mb-1 mt-4">Содержимое</label>
+                <div class="flex flex-wrap items-center justify-between gap-2 mt-4 mb-1">
+                    <span id="editModalContentHeading" class="text-sm font-medium text-base-content/70 shrink-0">Содержимое</span>
+                    <div class="dropdown dropdown-end">
+                        <button type="button" tabindex="0" class="btn btn-ghost btn-xs btn-square rounded-none min-h-0 h-7 w-7 shrink-0 border border-base-300 text-base-content/70 hover:text-base-content" aria-label="Справка по разметке содержимого" title="Справка">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                        </button>
+                        <div tabindex="0" class="dropdown-content bg-base-200 border border-base-300 rounded-none z-[120] w-[min(calc(100vw-2rem),22rem)] max-h-[min(70vh,20rem)] overflow-y-auto shadow-lg p-3 mt-1 text-left text-xs text-base-content/90 leading-snug">
+                            <p class="mb-3 last:mb-0">Клик по тексту — режим редактирования; клик вне области содержимого — снова просмотр с форматированием (запись на сервер только по «Сохранить»). После выделения фрагмента сразу появляется панель форматирования; правый клик — то же меню в точке курсора. Горячие клавиши в редакторе: Ctrl/Cmd+B/I/U, зачёркивание — Ctrl/Cmd+Shift+S. Теги: <code class="text-[0.8rem]">[b][/b]</code> <code class="text-[0.8rem]">[i][/i]</code> <code class="text-[0.8rem]">[u][/u]</code> <code class="text-[0.8rem]">[s][/s]</code>, ссылка <code class="text-[0.8rem]">[link module=M entity=E]…[/link]</code>. Экранирование <code class="text-[0.8rem]">\</code>.</p>
+                            <p class="mb-0">Каждый абзац (пустая строка между блоками) при декомпозиции станет отдельной карточкой. Перенос строки внутри тегов не допускается. Мягкий ориентир по объёму — около 100&nbsp;000 знаков.</p>
+                        </div>
+                    </div>
+                </div>
+                <span id="editModalContent-desc" class="sr-only">Клик по тексту — редактирование; клик вне области содержимого — просмотр с форматированием; сохранение на сервер по кнопке «Сохранить».</span>
                 <input type="hidden" name="content" id="editModalContent" value="" autocomplete="off">
-                <div id="editModalMarkupViewWrap">
-                    <div id="editModalMarkupView" class="noema-markup-view textarea textarea-bordered w-full rounded-none bg-base-200 border-base-300 min-h-[12rem] max-h-[22rem] overflow-auto p-3 text-sm leading-relaxed cursor-text whitespace-pre-wrap" tabindex="0" role="textbox" aria-multiline="true" aria-describedby="editModalContent-desc"></div>
-                    <p class="text-xs text-base-content/50 mt-1">Двойной клик по тексту — режим редактирования с подсветкой и превью. Теги: <code class="text-[0.8rem]">[b][/b]</code> <code class="text-[0.8rem]">[i][/i]</code> <code class="text-[0.8rem]">[u][/u]</code> <code class="text-[0.8rem]">[s][/s]</code>, ссылка <code class="text-[0.8rem]">[link module=M entity=E]…[/link]</code>. Экранирование <code class="text-[0.8rem]">\</code>.</p>
+                <div id="editModalMarkupBoundary">
+                    <div id="editModalMarkupViewWrap">
+                        <div id="editModalMarkupView" class="noema-markup-view textarea textarea-bordered w-full rounded-none bg-base-200 border-base-300 min-h-[12rem] max-h-[22rem] overflow-auto p-3 text-sm leading-relaxed cursor-pointer whitespace-pre-wrap" tabindex="-1" role="region" aria-describedby="editModalContent-desc" aria-labelledby="editModalContentHeading"></div>
+                    </div>
+                    <div id="editModalMarkupEditWrap" class="hidden mt-2">
+                        <div id="editModalCmHost" class="rounded-none border border-base-300 bg-base-200 overflow-hidden min-h-[12rem]"></div>
+                    </div>
                 </div>
-                <div id="editModalMarkupEditWrap" class="hidden mt-2">
-                    <div id="editModalCmHost" class="rounded-none border border-base-300 bg-base-200 overflow-hidden"></div>
-                    <p class="text-xs text-base-content/60 mt-2 mb-1">Превью</p>
-                    <div id="editModalMarkupPreview" class="textarea textarea-bordered w-full rounded-none bg-base-200 border-base-300 min-h-[6rem] max-h-[14rem] overflow-auto p-3 text-sm leading-relaxed whitespace-pre-wrap"></div>
-                    <button type="button" id="editModalMarkupDone" class="btn btn-ghost btn-sm rounded-none mt-2">Готово к просмотру</button>
-                </div>
-                <p id="editModalContent-desc" class="text-xs text-base-content/50 mt-1">Каждый абзац (пустая строка между блоками) при декомпозиции станет отдельной карточкой. Перенос строки внутри тегов не допускается. Мягкий ориентир по объёму — около 100&nbsp;000 знаков.</p>
                 @error('content')
                     <p class="text-error text-sm mt-2">{{ $message }}</p>
                 @enderror
                 <p id="editModalContentCounter" class="text-xs text-right mt-1 tabular-nums" aria-live="polite"></p>
                 <div class="mt-6 flex flex-wrap items-center justify-between gap-3">
                     <div class="flex flex-wrap gap-1 items-center">
-                        <button type="button" id="editModalHighlightBtn" class="btn btn-ghost btn-square rounded-none" onclick="highlightCardFromModal()">
-                            <span class="edit-modal-highlight-icon-add inline-flex" aria-hidden="true">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
-                            </span>
-                            <span class="edit-modal-highlight-icon-remove inline-flex" style="display: none" aria-hidden="true">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                    <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>
-                                    <line x1="5" y1="5" x2="19" y2="19"/>
-                                </svg>
-                            </span>
+                        <button type="button" id="editModalHighlightBtn" class="btn btn-ghost btn-square rounded-none card-page-pin-btn" onclick="toggleEditModalHighlight()" aria-pressed="false">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
                         </button>
                         <button type="button" class="btn btn-ghost btn-square rounded-none" title="Декомпозировать" onclick="submitModalDecompose()">
                             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
@@ -427,7 +564,7 @@
 
     @include('site.partials.footer')
 
-    @if ($errors->any() && ($errors->has('name') || $errors->has('synopsis') || $errors->has('cycle')))
+    @if ($errors->any() && ($errors->has('name') || $errors->has('synopsis') || $errors->has('cycle') || $errors->has('card_display_mode')))
         <script>
             document.addEventListener('DOMContentLoaded', function () {
                 var el = document.getElementById('storySettingsModal');

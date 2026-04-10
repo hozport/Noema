@@ -72,19 +72,20 @@
     </div>
 </div>
 
-<label class="block text-sm text-base-content/70 mb-1 mt-4" for="cf-short-{{ $formSuffix }}">Краткое описание</label>
-<textarea name="short_description" id="cf-short-{{ $formSuffix }}" rows="3"
-    class="textarea textarea-bordered w-full rounded-none bg-base-200 border-base-300 @error('short_description') textarea-error @enderror">{{ old('short_description', $c->short_description ?? '') }}</textarea>
-@error('short_description')
-    <p class="text-error text-sm mt-1">{{ $message }}</p>
-@enderror
-
-<label class="block text-sm text-base-content/70 mb-1 mt-4" for="cf-full-{{ $formSuffix }}">Полное описание</label>
-<textarea name="full_description" id="cf-full-{{ $formSuffix }}" rows="8"
-    class="textarea textarea-bordered w-full rounded-none bg-base-200 border-base-300 min-h-[12rem] @error('full_description') textarea-error @enderror">{{ old('full_description', $c->full_description ?? '') }}</textarea>
-@error('full_description')
-    <p class="text-error text-sm mt-1">{{ $message }}</p>
-@enderror
+@include('partials.noema-markup-field', [
+    'name' => 'short_description',
+    'baseId' => 'cf-short-'.$formSuffix,
+    'label' => 'Краткое описание',
+    'value' => old('short_description', $c->short_description ?? ''),
+    'mtClass' => 'mt-4',
+])
+@include('partials.noema-markup-field', [
+    'name' => 'full_description',
+    'baseId' => 'cf-full-'.$formSuffix,
+    'label' => 'Полное описание',
+    'value' => old('full_description', $c->full_description ?? ''),
+    'mtClass' => 'mt-4',
+])
 
 <label class="block text-sm text-base-content/70 mb-1 mt-4" for="cf-hab-{{ $formSuffix }}">Ореол обитания</label>
 <textarea name="habitat_text" id="cf-hab-{{ $formSuffix }}" rows="3" placeholder="Позже можно будет выбрать объекты карты"

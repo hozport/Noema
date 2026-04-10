@@ -41,15 +41,20 @@
     class="file-input file-input-bordered w-full rounded-none bg-base-200 border-base-300 @error('image') input-error @enderror">
 @error('image')<p class="text-error text-sm mt-1">{{ $message }}</p>@enderror
 
-<label for="faction-short-{{ $suffix }}" class="block text-sm text-base-content/70 mb-1 mt-4">Краткое описание</label>
-<textarea name="short_description" id="faction-short-{{ $suffix }}" rows="4"
-    class="textarea textarea-bordered w-full rounded-none bg-base-200 border-base-300 resize-y min-h-[5rem] @error('short_description') textarea-error @enderror">{{ old('short_description', optional($faction)->short_description) }}</textarea>
-@error('short_description')<p class="text-error text-sm mt-1">{{ $message }}</p>@enderror
-
-<label for="faction-full-{{ $suffix }}" class="block text-sm text-base-content/70 mb-1 mt-4">Полное описание</label>
-<textarea name="full_description" id="faction-full-{{ $suffix }}" rows="8"
-    class="textarea textarea-bordered w-full rounded-none bg-base-200 border-base-300 resize-y min-h-[10rem] @error('full_description') textarea-error @enderror">{{ old('full_description', optional($faction)->full_description) }}</textarea>
-@error('full_description')<p class="text-error text-sm mt-1">{{ $message }}</p>@enderror
+@include('partials.noema-markup-field', [
+    'name' => 'short_description',
+    'baseId' => 'faction-short-'.$suffix,
+    'label' => 'Краткое описание',
+    'value' => old('short_description', optional($faction)->short_description),
+    'mtClass' => 'mt-4',
+])
+@include('partials.noema-markup-field', [
+    'name' => 'full_description',
+    'baseId' => 'faction-full-'.$suffix,
+    'label' => 'Полное описание',
+    'value' => old('full_description', optional($faction)->full_description),
+    'mtClass' => 'mt-4',
+])
 
 <label for="faction-geo-{{ $suffix }}" class="block text-sm text-base-content/70 mb-1 mt-4">Географические объекты</label>
 <textarea name="geographic_stub" id="faction-geo-{{ $suffix }}" rows="2" placeholder="Позже здесь будет выбор с карт; пока можно оставить заметку."

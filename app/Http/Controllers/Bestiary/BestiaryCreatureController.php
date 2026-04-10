@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Bestiary;
 
 use App\Http\Controllers\Controller;
+use App\Markup\NoemaMarkupValidator;
 use App\Models\ActivityLog;
 use App\Models\Bestiary\Creature;
 use App\Models\Bestiary\CreatureGallery;
@@ -15,6 +16,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 class BestiaryCreatureController extends Controller
 {
@@ -242,6 +244,18 @@ class BestiaryCreatureController extends Controller
             $validated['remove_gallery_ids'] = $validated['remove_gallery_ids'] ?? [];
         } else {
             $validated['remove_gallery_ids'] = [];
+        }
+
+        foreach (['short_description', 'full_description'] as $field) {
+            $raw = $validated[$field] ?? null;
+            if ($raw !== null && $raw !== '') {
+                $markupErrors = NoemaMarkupValidator::validate($raw);
+                if ($markupErrors !== []) {
+                    throw ValidationException::withMessages([
+                        $field => implode(' ', $markupErrors),
+                    ]);
+                }
+            }
         }
 
         return $validated;

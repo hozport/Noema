@@ -63,6 +63,29 @@ class Card extends Model
         return NoemaMarkupHtmlRenderer::render($nodes);
     }
 
+    /**
+     * HTML для сетки карточек: абзацы (двойной перевод строки) как отдельные блоки, внутри — разметка Noema.
+     */
+    public function getMarkupHtmlParagraphsForGrid(): string
+    {
+        if ($this->content === null || $this->content === '') {
+            return '';
+        }
+        $trimmed = trim((string) $this->content);
+        if ($trimmed === '') {
+            return '';
+        }
+        $parts = preg_split('/\n\s*\n/', $trimmed, -1, PREG_SPLIT_NO_EMPTY);
+        $parser = new NoemaMarkupParser;
+        $html = '';
+        foreach ($parts as $para) {
+            $nodes = $parser->parse(trim($para));
+            $html .= '<p class="story-card-preview-p">'.NoemaMarkupHtmlRenderer::render($nodes).'</p>';
+        }
+
+        return $html;
+    }
+
     /** Плоский текст без тегов (превью, поиск). */
     public function getPlainContentForPreview(): string
     {

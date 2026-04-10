@@ -1,3 +1,5 @@
+import './noema-markup-fields.js';
+
 document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('bestiary-create-creature')?.addEventListener('click', () => {
         document.getElementById('creature-create-dialog')?.showModal();

@@ -231,7 +231,9 @@
     <dialog id="faction-create-dialog" class="biography-dialog" aria-labelledby="faction-create-title">
         <div class="biography-dialog__viewport">
             <div class="biography-dialog__scrim" data-faction-dialog-close tabindex="-1" aria-hidden="true"></div>
-            <form method="POST" action="{{ route('factions.store', $world) }}" enctype="multipart/form-data" class="biography-dialog__panel" onclick="event.stopPropagation()">
+            <form method="POST" action="{{ route('factions.store', $world) }}" enctype="multipart/form-data" class="biography-dialog__panel" onclick="event.stopPropagation()"
+                data-markup-entities-url="{{ route('worlds.markup.entities', $world) }}"
+                data-markup-resolve-url="{{ route('worlds.markup.resolve', $world) }}">
                 @csrf
                 <button type="button" class="biography-dialog__close" data-faction-dialog-close aria-label="Закрыть" title="Закрыть">
                     <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
@@ -252,6 +254,7 @@
         </div>
     </dialog>
 
+    @include('partials.markup-link-modal')
     @include('site.partials.footer')
 
     @if ($errors->any())
