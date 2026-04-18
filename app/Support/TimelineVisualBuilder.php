@@ -38,7 +38,9 @@ final class TimelineVisualBuilder
      *     lineToYear: int,
      *     eventGroups: list<array{year: int, count: int, titles: list<string>, exactDates: list<string|null>, eventIds: list<int>}>
      *   }>,
-     *   rulerTicks: list<int>
+     *   rulerTicks: list<int>,
+     *   eventYearMin: int|null,
+     *   eventYearMax: int|null
      * }
      */
     public static function build(World $world): array
@@ -56,6 +58,7 @@ final class TimelineVisualBuilder
 
         $tMin = 0;
         $allYears = [$tMin];
+        $eventYears = [];
 
         foreach ($lines as $line) {
             $allYears[] = (int) $line->start_year;
@@ -63,7 +66,9 @@ final class TimelineVisualBuilder
                 $allYears[] = (int) $line->end_year;
             }
             foreach ($line->events as $event) {
-                $allYears[] = (int) $event->epoch_year;
+                $y = (int) $event->epoch_year;
+                $allYears[] = $y;
+                $eventYears[] = $y;
             }
         }
 
@@ -71,6 +76,17 @@ final class TimelineVisualBuilder
         $span = $dataMax - $tMin;
         $paddingYears = TimelineVisualDemo::adaptivePaddingYears($span, $dataMax);
         $tMax = $dataMax + $paddingYears;
+        if ($tMax <= $tMin) {
+            $tMax = $tMin + 1;
+        }
+
+        /* Заданный «последний год шкалы» задаёт правую границу холста (в т.ч. дальше данных — запас справа). */
+        if ($world->timeline_max_year !== null) {
+            $cap = (int) $world->timeline_max_year;
+            if ($cap > $tMin) {
+                $tMax = $cap;
+            }
+        }
         if ($tMax <= $tMin) {
             $tMax = $tMin + 1;
         }
@@ -118,6 +134,9 @@ final class TimelineVisualBuilder
             $rulerTicks[] = $y;
         }
 
+        $eventYearMin = $eventYears === [] ? null : min($eventYears);
+        $eventYearMax = $eventYears === [] ? null : max($eventYears);
+
         return [
             'canvasWidth' => $canvasWidth,
             'tMin' => $tMin,
@@ -129,11 +148,19 @@ final class TimelineVisualBuilder
             'referenceLabel' => $referenceLabel,
             'tracks' => $tracks,
             'rulerTicks' => $rulerTicks,
+            'eventYearMin' => $eventYearMin,
+            'eventYearMax' => $eventYearMax,
         ];
     }
 
     /**
+     * Год первого по времени обрыва на дополнительной линии.
+     *
+     * При нескольких точках с флагом «обрывает линию» действует **самый ранний** по шкале
+     * (при равном годе — по месяцу, дню, id). Основная линия мира не обрывается по событиям.
+     *
      * @param  Collection<int, TimelineEvent>|list<TimelineEvent>  $events
+     * @return int|null Год обрыва или null, если ни одна точка не обрывает линию
      */
     private static function firstTerminatorYear($events): ?int
     {

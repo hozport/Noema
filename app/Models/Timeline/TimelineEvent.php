@@ -51,6 +51,11 @@ class TimelineEvent extends Model
         )->withTimestamps();
     }
 
+    /**
+     * Связанные фракции (таблица `faction_timeline_event` без полей времени).
+     *
+     * @return BelongsToMany<Faction, $this>
+     */
     public function factions(): BelongsToMany
     {
         return $this->belongsToMany(
@@ -58,6 +63,6 @@ class TimelineEvent extends Model
             'faction_timeline_event',
             'timeline_event_id',
             'faction_id'
-        )->withTimestamps();
+        );
     }
 }

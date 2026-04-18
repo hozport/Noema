@@ -285,7 +285,7 @@ export function parseToPlain(source) {
 }
 
 export const MODULE_OPTIONS = [
-    { value: 1, label: 'Объекты карты (скоро)' },
+    { value: 1, label: 'Объекты карты' },
     { value: 2, label: 'Линия таймлайна' },
     { value: 3, label: 'Бестиарий' },
     { value: 4, label: 'Биография' },

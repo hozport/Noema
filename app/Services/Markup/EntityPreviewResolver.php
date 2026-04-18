@@ -8,6 +8,7 @@ use App\Models\Biography\Biography;
 use App\Models\Faction\Faction;
 use App\Models\Timeline\TimelineLine;
 use App\Models\Worlds\World;
+use App\Models\Worlds\WorldMapSprite;
 
 final class EntityPreviewResolver
 {
@@ -42,7 +43,7 @@ final class EntityPreviewResolver
                 continue;
             }
             match ($mod) {
-                EntityModule::MapStub => null,
+                EntityModule::MapObject => $this->fillMapSprites($world, $ids, $out),
                 EntityModule::TimelineLine => $this->fillTimeline($world, $ids, $out),
                 EntityModule::BestiaryCreature => $this->fillCreatures($world, $ids, $out),
                 EntityModule::Biography => $this->fillBiographies($world, $ids, $out),
@@ -51,6 +52,31 @@ final class EntityPreviewResolver
         }
 
         return $out;
+    }
+
+    /**
+     * @param  list<int>  $ids
+     * @param  array<string, array{title: string, description: string, image_url: ?string}>  $out
+     */
+    private function fillMapSprites(World $world, array $ids, array &$out): void
+    {
+        $rows = WorldMapSprite::query()
+            ->where('world_id', $world->id)
+            ->whereIn('id', $ids)
+            ->get(['id', 'sprite_path', 'title', 'description']);
+
+        foreach ($rows as $sprite) {
+            $key = EntityModule::MapObject->value.':'.$sprite->id;
+            $title = $sprite->title !== null && trim($sprite->title) !== ''
+                ? trim($sprite->title)
+                : 'Объект на карте';
+            $desc = $sprite->description !== null ? trim((string) $sprite->description) : '';
+            $out[$key] = [
+                'title' => $title,
+                'description' => $desc,
+                'image_url' => $this->mapSpritePublicUrl((string) $sprite->sprite_path),
+            ];
+        }
     }
 
     /**
@@ -135,5 +161,27 @@ final class EntityPreviewResolver
                 'image_url' => $f->imageUrl(),
             ];
         }
+    }
+
+    /**
+     * Публичный URL файла спрайта в `public/sprites`.
+     */
+    private function mapSpritePublicUrl(string $relativePath): ?string
+    {
+        $s = str_replace('\\', '/', trim($relativePath));
+        if ($s === '' || str_contains($s, '..')) {
+            return null;
+        }
+        foreach (explode('/', $s) as $part) {
+            if ($part === '..') {
+                return null;
+            }
+        }
+        $parts = explode('/', $s, 2);
+        if (count($parts) !== 2) {
+            return null;
+        }
+
+        return url('/sprites/'.rawurlencode($parts[0]).'/'.rawurlencode($parts[1]));
     }
 }

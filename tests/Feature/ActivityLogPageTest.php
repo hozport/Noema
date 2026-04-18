@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\ActivityLog;
+use App\Models\Biography\Biography;
 use App\Models\Cards\Card;
 use App\Models\Cards\Story;
 use App\Models\User;
@@ -52,6 +53,26 @@ class ActivityLogPageTest extends TestCase
         ]);
 
         $this->actingAs($other)->get(route('worlds.activity', $world))->assertForbidden();
+    }
+
+    public function test_world_activity_clear_deletes_logs_for_world(): void
+    {
+        $user = User::factory()->create();
+        $world = World::query()->create([
+            'user_id' => $user->id,
+            'name' => 'Мир W',
+            'onoff' => true,
+        ]);
+        ActivityLog::record($user, $world, 'world.updated', 'Событие', $world);
+
+        $this->assertSame(1, ActivityLog::query()->where('world_id', $world->id)->count());
+
+        $this->actingAs($user)
+            ->from(route('worlds.activity', $world))
+            ->delete(route('worlds.activity.clear', $world))
+            ->assertRedirect(route('worlds.activity', $world));
+
+        $this->assertSame(0, ActivityLog::query()->where('world_id', $world->id)->count());
     }
 
     public function test_story_activity_lists_only_that_story_and_its_cards(): void
@@ -158,5 +179,56 @@ class ActivityLogPageTest extends TestCase
         $response->assertSee('Событие карточки', false);
         $response->assertDontSee('Настройки мира', false);
         $response->assertSee(route('cards.index', $world), false);
+    }
+
+    public function test_biographies_module_activity_filters_by_biography_actions(): void
+    {
+        $user = User::factory()->create();
+        $world = World::query()->create([
+            'user_id' => $user->id,
+            'name' => 'Мир W',
+            'onoff' => true,
+        ]);
+        $bio = Biography::query()->create([
+            'world_id' => $world->id,
+            'name' => 'Герой',
+        ]);
+
+        ActivityLog::record($user, $world, 'biography.updated', 'Правка биографии', $bio);
+        ActivityLog::record($user, $world, 'world.updated', 'Настройки мира', $world);
+
+        $response = $this->actingAs($user)->get(route('biographies.module.activity', $world));
+
+        $response->assertOk();
+        $response->assertSee('Правка биографии', false);
+        $response->assertDontSee('Настройки мира', false);
+        $response->assertSee(route('biographies.index', $world), false);
+    }
+
+    public function test_biography_entity_activity_lists_only_that_biography(): void
+    {
+        $user = User::factory()->create();
+        $world = World::query()->create([
+            'user_id' => $user->id,
+            'name' => 'Мир W',
+            'onoff' => true,
+        ]);
+        $bioA = Biography::query()->create([
+            'world_id' => $world->id,
+            'name' => 'А',
+        ]);
+        $bioB = Biography::query()->create([
+            'world_id' => $world->id,
+            'name' => 'Б',
+        ]);
+
+        ActivityLog::record($user, $world, 'biography.updated', 'Событие А', $bioA);
+        ActivityLog::record($user, $world, 'biography.updated', 'Событие Б', $bioB);
+
+        $response = $this->actingAs($user)->get(route('biography.activity', [$world, $bioA]));
+
+        $response->assertOk();
+        $response->assertSee('Событие А', false);
+        $response->assertDontSee('Событие Б', false);
     }
 }

@@ -3,6 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    @include('partials.flash-toast-critical-css')
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>Связи — {{ $world->name }} — Noema</title>
     <link rel="preconnect" href="https://fonts.bunny.net">
@@ -36,13 +37,13 @@
                         <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
                     </svg>
                 </button>
-                @include('partials.activity-log-button', ['world' => $world])
+                @include('partials.activity-log-button', ['world' => $world, 'connectionsModuleJournal' => true])
             </div>
         </div>
         <p class="text-base-content/60 mb-6 max-w-2xl">{{ $world->name }} — доски для связей между сущностями мира (как на детективной стене).</p>
 
         @if (session('success'))
-            <p class="text-success mb-4">{{ session('success') }}</p>
+            <p class="text-success mb-4" role="alert" data-auto-dismiss>{{ session('success') }}</p>
         @endif
 
         @if ($boards->isNotEmpty())

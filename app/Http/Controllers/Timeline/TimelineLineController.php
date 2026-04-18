@@ -4,11 +4,14 @@ namespace App\Http\Controllers\Timeline;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Timeline\StoreTimelineLineRequest;
-use App\Models\ActivityLog;
 use App\Http\Requests\Timeline\UpdateTimelineLineRequest;
+use App\Models\ActivityLog;
 use App\Models\Timeline\TimelineLine;
 use App\Models\Worlds\World;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class TimelineLineController extends Controller
 {
@@ -52,6 +55,81 @@ class TimelineLineController extends Controller
         ActivityLog::record($request->user(), $world, 'timeline.line.updated', 'Изменена линия «'.$line->name.'».', $line);
 
         return redirect()->route('worlds.timeline', $world);
+    }
+
+    /**
+     * Сдвиг дополнительной линии на одну позицию вверх или вниз (обмен sort_order с соседом).
+     *
+     * Основная линия мира не участвует; с ней нельзя меняться местами.
+     *
+     * @param  Request  $request  Поле direction: up|down
+     * @param  World  $world  Мир
+     * @param  TimelineLine  $line  Линия (не основная)
+     */
+    public function move(Request $request, World $world, TimelineLine $line): JsonResponse|RedirectResponse
+    {
+        if ($world->user_id !== $request->user()->id || (int) $line->world_id !== (int) $world->id) {
+            abort(403);
+        }
+
+        if (! $world->onoff) {
+            abort(404);
+        }
+
+        if ($line->is_main) {
+            abort(403, 'Основную линию нельзя перемещать.');
+        }
+
+        $validated = $request->validate([
+            'direction' => ['required', 'string', 'in:up,down'],
+        ]);
+
+        $direction = $validated['direction'];
+
+        $lines = $world->timelineLines()
+            ->orderBy('is_main')
+            ->orderBy('sort_order')
+            ->orderBy('id')
+            ->get();
+
+        $idx = $lines->search(fn (TimelineLine $l) => (int) $l->id === (int) $line->id);
+        if ($idx === false) {
+            abort(404);
+        }
+
+        $neighborIdx = $direction === 'up' ? $idx - 1 : $idx + 1;
+        if ($neighborIdx < 0 || $neighborIdx >= $lines->count()) {
+            if ($request->expectsJson()) {
+                return response()->json(['message' => 'Нет соседней линии для обмена.'], 422);
+            }
+
+            return redirect()->route('worlds.timeline', $world)->with('error', 'Нельзя переместить линию в этом направлении.');
+        }
+
+        /** @var TimelineLine $neighbor */
+        $neighbor = $lines->get($neighborIdx);
+        if ($neighbor->is_main) {
+            if ($request->expectsJson()) {
+                return response()->json(['message' => 'С основной линией нельзя меняться местами.'], 422);
+            }
+
+            return redirect()->route('worlds.timeline', $world)->with('error', 'С основной линией нельзя меняться местами.');
+        }
+
+        DB::transaction(function () use ($line, $neighbor): void {
+            $sortLine = (int) $line->sort_order;
+            $sortNeighbor = (int) $neighbor->sort_order;
+            $line->update(['sort_order' => $sortNeighbor]);
+            $neighbor->update(['sort_order' => $sortLine]);
+        });
+
+        ActivityLog::record($request->user(), $world, 'timeline.line.moved', 'Изменён порядок линии «'.$line->name.'».', $line);
+
+        if ($request->expectsJson()) {
+            return response()->json(['ok' => true]);
+        }
+
+        return redirect()->route('worlds.timeline', $world)->with('success', 'Порядок линий обновлён.');
     }
 
     public function destroy(Request $request, World $world, TimelineLine $line)

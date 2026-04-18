@@ -69,6 +69,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/profile', [ProfileController::class, 'show'])->name('profile');
         Route::put('/profile', [ProfileController::class, 'update'])->name('profile.update');
         Route::get('/activity', [ActivityLogController::class, 'account'])->name('activity');
+        Route::delete('/activity', [ActivityLogController::class, 'clearAccount'])->name('activity.clear');
         Route::put('/worlds-display', [WorldsListDisplayController::class, 'update'])->name('worlds-display.update');
         Route::get('/team', [TeamController::class, 'show'])->name('team');
         Route::get('/settings', [NoemaSettingsController::class, 'show'])->name('settings');
@@ -91,7 +92,9 @@ Route::middleware('auth')->group(function () {
     */
     Route::get('/worlds/{world}', [WorldDashboardController::class, 'show'])->name('worlds.dashboard');
     Route::get('/worlds/{world}/activity/timeline', [ActivityLogController::class, 'worldTimeline'])->name('worlds.activity.timeline');
+    Route::delete('/worlds/{world}/activity/timeline', [ActivityLogController::class, 'clearWorldTimeline'])->name('worlds.activity.timeline.clear');
     Route::get('/worlds/{world}/activity', [ActivityLogController::class, 'world'])->name('worlds.activity');
+    Route::delete('/worlds/{world}/activity', [ActivityLogController::class, 'clearWorld'])->name('worlds.activity.clear');
     Route::get('/worlds/{world}/markup/entities', [MarkupEntityController::class, 'entities'])->name('worlds.markup.entities');
     Route::post('/worlds/{world}/markup/resolve', [MarkupEntityController::class, 'resolve'])->name('worlds.markup.resolve');
     Route::put('/worlds/{world}', [WorldSettingsController::class, 'update'])->name('worlds.update');
@@ -111,7 +114,11 @@ Route::middleware('auth')->group(function () {
     Route::get('/worlds/{world}/connections/creatures', [ConnectionsBoardController::class, 'creatures'])->name('worlds.connections.data.creatures');
     Route::get('/worlds/{world}/connections/biographies', [ConnectionsBoardController::class, 'biographies'])->name('worlds.connections.data.biographies');
     Route::get('/worlds/{world}/connections', [ConnectionsController::class, 'index'])->name('worlds.connections');
+    Route::get('/worlds/{world}/connections/activity', [ActivityLogController::class, 'connectionsModule'])->name('connections.module.activity');
+    Route::delete('/worlds/{world}/connections/activity', [ActivityLogController::class, 'clearConnectionsModule'])->name('connections.module.activity.clear');
     Route::post('/worlds/{world}/connections', [ConnectionsController::class, 'store'])->name('worlds.connections.store');
+    Route::get('/worlds/{world}/connections/{connectionBoard}/activity', [ActivityLogController::class, 'connectionBoard'])->name('connections.board.activity');
+    Route::delete('/worlds/{world}/connections/{connectionBoard}/activity', [ActivityLogController::class, 'clearConnectionBoard'])->name('connections.board.activity.clear');
     Route::get('/worlds/{world}/connections/{connectionBoard}', [ConnectionsBoardController::class, 'show'])->name('worlds.connections.show');
     Route::post('/worlds/{world}/connections/{connectionBoard}/nodes', [ConnectionsBoardController::class, 'nodesStore'])->name('worlds.connections.nodes.store');
     Route::put('/worlds/{world}/connections/{connectionBoard}/nodes/{node}', [ConnectionsBoardController::class, 'nodesUpdate'])->name('worlds.connections.nodes.update');
@@ -126,6 +133,9 @@ Route::middleware('auth')->group(function () {
     |----------------------------------------------------------------------
     */
     Route::get('/worlds/{world}/maps', [WorldMapsController::class, 'show'])->name('worlds.maps');
+    Route::get('/worlds/{world}/maps/activity', [ActivityLogController::class, 'mapsModule'])->name('maps.module.activity');
+    Route::delete('/worlds/{world}/maps/activity', [ActivityLogController::class, 'clearMapsModule'])->name('maps.module.activity.clear');
+    Route::put('/worlds/{world}/maps/canvas', [WorldMapsController::class, 'updateCanvas'])->name('worlds.maps.canvas.update');
     Route::post('/worlds/{world}/maps/sprites', [WorldMapsController::class, 'storeSprite'])->name('worlds.maps.sprites.store');
     Route::put('/worlds/{world}/maps/sprites/{worldMapSprite}', [WorldMapsController::class, 'updateSprite'])->name('worlds.maps.sprites.update');
     Route::delete('/worlds/{world}/maps/sprites/{worldMapSprite}', [WorldMapsController::class, 'destroySprite'])->name('worlds.maps.sprites.destroy');
@@ -136,8 +146,11 @@ Route::middleware('auth')->group(function () {
     |----------------------------------------------------------------------
     */
     Route::get('/worlds/{world}/timeline', [TimelineController::class, 'show'])->name('worlds.timeline');
+    Route::get('/worlds/{world}/timeline/pdf', [TimelineController::class, 'pdf'])->name('worlds.timeline.pdf');
+    Route::put('/worlds/{world}/timeline/world-reference', [TimelineController::class, 'updateWorldReference'])->name('worlds.timeline.world-reference.update');
     Route::post('/worlds/{world}/timeline/clear', [TimelineClearController::class, 'store'])->name('worlds.timeline.clear');
     Route::post('/worlds/{world}/timeline/lines', [TimelineLineController::class, 'store'])->name('timeline.lines.store');
+    Route::post('/worlds/{world}/timeline/lines/{line}/move', [TimelineLineController::class, 'move'])->name('timeline.lines.move');
     Route::put('/worlds/{world}/timeline/lines/{line}', [TimelineLineController::class, 'update'])->name('timeline.lines.update');
     Route::delete('/worlds/{world}/timeline/lines/{line}', [TimelineLineController::class, 'destroy'])->name('timeline.lines.destroy');
     Route::post('/worlds/{world}/timeline/events', [TimelineEventController::class, 'store'])->name('timeline.events.store');
@@ -151,15 +164,20 @@ Route::middleware('auth')->group(function () {
     */
     Route::get('/worlds/{world}/cards', [StoryController::class, 'index'])->name('cards.index');
     Route::get('/worlds/{world}/cards/activity', [ActivityLogController::class, 'cardsModule'])->name('cards.module.activity');
+    Route::delete('/worlds/{world}/cards/activity', [ActivityLogController::class, 'clearCardsModule'])->name('cards.module.activity.clear');
     Route::post('/worlds/{world}/cards/stories', [StoryController::class, 'store'])->name('cards.stories.store');
     Route::get('/worlds/{world}/cards/stories/{story}', [StoryController::class, 'show'])->name('cards.show');
     Route::put('/worlds/{world}/cards/stories/{story}', [StoryController::class, 'update'])->name('cards.stories.update');
     Route::get('/worlds/{world}/cards/stories/{story}/pdf', [StoryController::class, 'pdf'])->name('cards.stories.pdf');
     Route::get('/worlds/{world}/cards/stories/{story}/activity', [ActivityLogController::class, 'story'])->name('cards.stories.activity');
+    Route::delete('/worlds/{world}/cards/stories/{story}/activity', [ActivityLogController::class, 'clearStory'])->name('cards.stories.activity.clear');
     Route::delete('/worlds/{world}/cards/stories/{story}', [StoryController::class, 'destroy'])->name('cards.stories.destroy');
     Route::post('/worlds/{world}/cards/stories/{story}/reorder', [CardController::class, 'reorder'])->name('cards.reorder');
+    Route::post('/worlds/{world}/cards/stories/{story}/cards/bulk-create', [CardController::class, 'bulkCreate'])->name('cards.stories.cards.bulk-create');
+    Route::post('/worlds/{world}/cards/stories/{story}/decompose-all', [CardController::class, 'decomposeAll'])->name('cards.stories.decompose-all');
     Route::get('/worlds/{world}/cards/stories/{story}/cards/{card}/edit', [CardController::class, 'edit'])->name('cards.card.edit');
     Route::get('/worlds/{world}/cards/stories/{story}/cards/{card}/activity', [ActivityLogController::class, 'card'])->name('cards.card.activity');
+    Route::delete('/worlds/{world}/cards/stories/{story}/cards/{card}/activity', [ActivityLogController::class, 'clearCard'])->name('cards.card.activity.clear');
     Route::put('/worlds/{world}/cards/{card}', [CardController::class, 'update'])->name('cards.update');
     Route::delete('/worlds/{world}/cards/{card}', [CardController::class, 'destroy'])->name('cards.destroy');
     Route::post('/worlds/{world}/cards/{card}/highlight', [CardController::class, 'highlight'])->name('cards.highlight');
@@ -172,8 +190,12 @@ Route::middleware('auth')->group(function () {
     */
     Route::get('/worlds/{world}/bestiary', [BestiaryController::class, 'index'])->name('bestiary.index');
     Route::get('/worlds/{world}/bestiary/pdf', [BestiaryController::class, 'pdf'])->name('bestiary.pdf');
+    Route::get('/worlds/{world}/bestiary/activity', [ActivityLogController::class, 'bestiaryModule'])->name('bestiary.module.activity');
+    Route::delete('/worlds/{world}/bestiary/activity', [ActivityLogController::class, 'clearBestiaryModule'])->name('bestiary.module.activity.clear');
     Route::post('/worlds/{world}/bestiary/creatures', [BestiaryCreatureController::class, 'store'])->name('bestiary.creatures.store');
     Route::put('/worlds/{world}/bestiary/creatures/{creature}', [BestiaryCreatureController::class, 'update'])->name('bestiary.creatures.update');
+    Route::get('/worlds/{world}/bestiary/creatures/{creature}/activity', [ActivityLogController::class, 'creature'])->name('bestiary.creature.activity');
+    Route::delete('/worlds/{world}/bestiary/creatures/{creature}/activity', [ActivityLogController::class, 'clearCreature'])->name('bestiary.creature.activity.clear');
     Route::get('/worlds/{world}/bestiary/creatures/{creature}/pdf', [BestiaryCreatureController::class, 'pdf'])->name('bestiary.creatures.pdf');
     Route::delete('/worlds/{world}/bestiary/creatures/{creature}', [BestiaryCreatureController::class, 'destroy'])->name('bestiary.creatures.destroy');
     Route::get('/worlds/{world}/bestiary/creatures/{creature}', [BestiaryCreatureController::class, 'show'])->name('bestiary.creatures.show');
@@ -186,6 +208,8 @@ Route::middleware('auth')->group(function () {
     */
     Route::get('/worlds/{world}/biographies/pdf', [BiographiesController::class, 'pdf'])->name('biographies.pdf');
     Route::get('/worlds/{world}/biographies', [BiographiesController::class, 'index'])->name('biographies.index');
+    Route::get('/worlds/{world}/biographies/activity', [ActivityLogController::class, 'biographiesModule'])->name('biographies.module.activity');
+    Route::delete('/worlds/{world}/biographies/activity', [ActivityLogController::class, 'clearBiographiesModule'])->name('biographies.module.activity.clear');
     Route::post('/worlds/{world}/biographies', [BiographyProfileController::class, 'store'])->name('biographies.store');
     Route::post('/worlds/{world}/biographies/{biography}/events', [BiographyEventController::class, 'store'])->name('biographies.events.store');
     Route::put('/worlds/{world}/biographies/{biography}/events/{biographyEvent}', [BiographyEventController::class, 'update'])->name('biographies.events.update');
@@ -193,6 +217,8 @@ Route::middleware('auth')->group(function () {
     Route::post('/worlds/{world}/biographies/{biography}/timeline/create-line', [BiographyTimelineController::class, 'createLine'])->name('biographies.timeline.create-line');
     Route::delete('/worlds/{world}/biographies/{biography}/timeline/line', [BiographyTimelineController::class, 'removeLine'])->name('biographies.timeline.remove-line');
     Route::post('/worlds/{world}/biographies/{biography}/timeline/push-event', [BiographyTimelineController::class, 'pushEvent'])->name('biographies.timeline.push-event');
+    Route::get('/worlds/{world}/biographies/{biography}/activity', [ActivityLogController::class, 'biography'])->name('biography.activity');
+    Route::delete('/worlds/{world}/biographies/{biography}/activity', [ActivityLogController::class, 'clearBiography'])->name('biography.activity.clear');
     Route::get('/worlds/{world}/biographies/{biography}/pdf', [BiographyProfileController::class, 'pdf'])->name('biography.pdf');
     Route::delete('/worlds/{world}/biographies/{biography}', [BiographyProfileController::class, 'destroy'])->name('biographies.destroy');
     Route::get('/worlds/{world}/biographies/{biography}', [BiographyProfileController::class, 'show'])->name('biographies.show');
@@ -205,6 +231,8 @@ Route::middleware('auth')->group(function () {
     */
     Route::get('/worlds/{world}/factions', [FactionsController::class, 'index'])->name('factions.index');
     Route::get('/worlds/{world}/factions/pdf', [FactionsController::class, 'pdf'])->name('factions.index.pdf');
+    Route::get('/worlds/{world}/factions/activity', [ActivityLogController::class, 'factionsModule'])->name('factions.module.activity');
+    Route::delete('/worlds/{world}/factions/activity', [ActivityLogController::class, 'clearFactionsModule'])->name('factions.module.activity.clear');
     Route::post('/worlds/{world}/factions', [FactionProfileController::class, 'store'])->name('factions.store');
     Route::post('/worlds/{world}/factions/{faction}/events', [FactionEventController::class, 'store'])->name('factions.events.store');
     Route::put('/worlds/{world}/factions/{faction}/events/{factionEvent}', [FactionEventController::class, 'update'])->name('factions.events.update');
@@ -212,6 +240,8 @@ Route::middleware('auth')->group(function () {
     Route::post('/worlds/{world}/factions/{faction}/timeline/create-line', [FactionTimelineController::class, 'createLine'])->name('factions.timeline.create-line');
     Route::delete('/worlds/{world}/factions/{faction}/timeline/line', [FactionTimelineController::class, 'removeLine'])->name('factions.timeline.remove-line');
     Route::post('/worlds/{world}/factions/{faction}/timeline/push-event', [FactionTimelineController::class, 'pushEvent'])->name('factions.timeline.push-event');
+    Route::get('/worlds/{world}/factions/{faction}/activity', [ActivityLogController::class, 'faction'])->name('faction.activity');
+    Route::delete('/worlds/{world}/factions/{faction}/activity', [ActivityLogController::class, 'clearFaction'])->name('faction.activity.clear');
     Route::get('/worlds/{world}/factions/{faction}/pdf', [FactionProfileController::class, 'pdf'])->name('factions.pdf');
     Route::get('/worlds/{world}/factions/{faction}', [FactionProfileController::class, 'show'])->name('factions.show');
     Route::put('/worlds/{world}/factions/{faction}', [FactionProfileController::class, 'update'])->name('factions.update');

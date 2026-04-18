@@ -3,6 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    @include('partials.flash-toast-critical-css')
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>{{ $world->name }} — Дашборд — Noema</title>
     <link rel="preconnect" href="https://fonts.bunny.net">
@@ -44,7 +45,7 @@
 
     <main class="flex-1 p-6 max-w-[1344px] w-full mx-auto">
         @if (session('success'))
-            <div role="alert" class="alert alert-success rounded-none mb-6 max-w-2xl">
+            <div role="alert" class="alert alert-success rounded-none mb-6 max-w-2xl" data-auto-dismiss>
                 <span>{{ session('success') }}</span>
             </div>
         @endif
@@ -63,7 +64,7 @@
                         <path d="M19 12H5M12 19l-7-7 7-7"/>
                     </svg>
                 </a>
-                <button type="button" class="btn btn-ghost btn-square shrink-0 opacity-80 hover:opacity-100" title="Экспорт в PDF — скоро" aria-label="PDF (скоро)">
+                <button type="button" class="btn btn-ghost btn-square shrink-0 opacity-80 hover:opacity-100" title="Экспорт в PDF" aria-label="Экспорт в PDF">
                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                         <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
                         <polyline points="7 10 12 15 17 10"/>
@@ -204,12 +205,37 @@
                     @enderror
                 </div>
                 <div class="form-control w-full">
+                    <label class="label py-1" for="world-settings-setting"><span class="label-text">Сеттинг</span></label>
+                    <select id="world-settings-setting" name="setting" required
+                        class="select select-bordered w-full rounded-none bg-base-100 border-base-300 @error('setting') select-error @enderror">
+                        @foreach (\App\Models\Worlds\WorldSetting::cases() as $case)
+                            <option value="{{ $case->value }}" @selected(old('setting', $world->setting->value ?? \App\Models\Worlds\WorldSetting::Fantasy->value) === $case->value)>
+                                {{ $case->label() }}
+                            </option>
+                        @endforeach
+                    </select>
+                    <p class="text-xs text-base-content/50 mt-1">Влияет на стилистику интерфейса карты и подписей (в перспективе — и других модулей).</p>
+                    @error('setting')
+                        <p class="text-error text-sm mt-1">{{ $message }}</p>
+                    @enderror
+                </div>
+                <div class="form-control w-full">
                     <label class="label py-1" for="world-settings-reference"><span class="label-text">Точка отсчёта</span></label>
                     <input type="text" id="world-settings-reference" name="reference_point" value="{{ old('reference_point', $world->reference_point) }}" maxlength="255"
                         class="input input-bordered w-full rounded-none bg-base-100 border-base-300 @error('reference_point') input-error @enderror"
                         placeholder="Например, метка нуля на таймлайне">
                     <p class="text-xs text-base-content/50 mt-1">Отображается на шкале времени и в связанных подсказках.</p>
                     @error('reference_point')
+                        <p class="text-error text-sm mt-1">{{ $message }}</p>
+                    @enderror
+                </div>
+                <div class="form-control w-full">
+                    <label class="label py-1" for="world-settings-timeline-max-year"><span class="label-text">Ограничить таймлайн</span></label>
+                    <input type="number" id="world-settings-timeline-max-year" name="timeline_max_year" value="{{ old('timeline_max_year', $world->timeline_max_year) }}" min="0"
+                        class="input input-bordered w-full rounded-none bg-base-100 border-base-300 @error('timeline_max_year') input-error @enderror"
+                        placeholder="Последний год на шкале (пусто — без ограничения)">
+                    <p class="text-xs text-base-content/50 mt-1">Правая граница шкалы на холсте совпадает с этим годом (можно задать дальше последних событий — будет пустое место справа; меньше максимума данных — шкала обрежется).</p>
+                    @error('timeline_max_year')
                         <p class="text-error text-sm mt-1">{{ $message }}</p>
                     @enderror
                 </div>

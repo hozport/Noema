@@ -9,6 +9,7 @@ use App\Models\Biography\Biography;
 use App\Models\Faction\Faction;
 use App\Models\Timeline\TimelineLine;
 use App\Models\Worlds\World;
+use App\Models\Worlds\WorldMapSprite;
 use App\Services\Markup\EntityPreviewResolver;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -31,7 +32,17 @@ class MarkupEntityController extends Controller
         }
 
         $items = match ($enum) {
-            EntityModule::MapStub => [],
+            EntityModule::MapObject => WorldMapSprite::query()
+                ->where('world_id', $world->id)
+                ->orderBy('id')
+                ->get(['id', 'title'])
+                ->filter(fn (WorldMapSprite $s) => $s->qualifiesForMarkupEntityLink())
+                ->map(fn (WorldMapSprite $s) => [
+                    'id' => $s->id,
+                    'label' => trim((string) $s->title),
+                ])
+                ->values()
+                ->all(),
             EntityModule::TimelineLine => TimelineLine::query()
                 ->where('world_id', $world->id)
                 ->orderBy('sort_order')

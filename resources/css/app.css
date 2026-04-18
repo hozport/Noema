@@ -63,3 +63,56 @@
 .noema-markup-view s {
     text-decoration: line-through;
 }
+
+/* Flash: в разметке скрыты до переноса в стек (см. partial flash-toast-critical-css для первого кадра) */
+[data-auto-dismiss] {
+    display: none !important;
+}
+
+#flash-toast-stack > .flash-toast.alert {
+    display: grid !important;
+}
+
+#flash-toast-stack > .flash-toast.flash-toast--plain {
+    display: block !important;
+}
+
+/* Flash / session: фиксированный стек справа, без сдвига вёрстки страницы */
+#flash-toast-stack {
+    position: fixed;
+    top: max(0.75rem, env(safe-area-inset-top));
+    right: max(0.75rem, env(safe-area-inset-right));
+    z-index: 99999;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    align-items: stretch;
+    width: min(42rem, calc(100vw - 1.5rem));
+    max-width: min(42rem, calc(100vw - 1.5rem));
+    pointer-events: none;
+}
+
+#flash-toast-stack > .flash-toast {
+    pointer-events: auto;
+    width: 100%;
+    margin: 0 !important;
+    flex-shrink: 0;
+    transform: translateX(calc(100% + 1.5rem));
+    transition: transform 0.38s cubic-bezier(0.22, 1, 0.36, 1);
+    will-change: transform;
+}
+
+#flash-toast-stack > .flash-toast.flash-toast--visible {
+    transform: translateX(0);
+}
+
+/* Простой текст без .alert — плита в стиле интерфейса */
+#flash-toast-stack > .flash-toast.flash-toast--plain {
+    @apply rounded-none border border-base-300 bg-base-200/95 px-4 py-3 text-sm leading-snug shadow-lg;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    #flash-toast-stack > .flash-toast {
+        transition-duration: 0.01ms;
+    }
+}

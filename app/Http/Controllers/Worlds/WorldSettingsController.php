@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Worlds;
 use App\Http\Controllers\Controller;
 use App\Models\ActivityLog;
 use App\Models\Worlds\World;
+use App\Models\Worlds\WorldSetting;
 use App\Services\WorldReferencePointSyncService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -17,6 +18,12 @@ class WorldSettingsController extends Controller
         private readonly WorldReferencePointSyncService $referencePointSync
     ) {}
 
+    /**
+     * Сохраняет настройки мира с дашборда: название, описание, точка отсчёта, ограничение правой границы таймлайна, обложка.
+     *
+     * @param  Request  $request  Поля формы, в т.ч. `timeline_max_year` (nullable)
+     * @param  World  $world  Мир
+     */
     public function update(Request $request, World $world): RedirectResponse
     {
         if ($world->user_id !== $request->user()->id) {
@@ -31,6 +38,8 @@ class WorldSettingsController extends Controller
             'name' => ['required', 'string', 'max:255'],
             'annotation' => ['nullable', 'string', 'max:1000'],
             'reference_point' => ['nullable', 'string', 'max:255'],
+            'timeline_max_year' => ['nullable', 'integer', 'min:0'],
+            'setting' => ['required', 'string', 'in:'.implode(',', array_column(WorldSetting::cases(), 'value'))],
             'image' => ['nullable', 'image', 'max:2048'],
             'remove_image' => ['nullable', 'boolean'],
         ]);
@@ -47,6 +56,8 @@ class WorldSettingsController extends Controller
         $world->name = $validated['name'];
         $world->annotation = $validated['annotation'] ?? null;
         $world->reference_point = $validated['reference_point'] ?? null;
+        $world->timeline_max_year = $validated['timeline_max_year'] ?? null;
+        $world->setting = WorldSetting::from($validated['setting']);
 
         $removeImage = $request->boolean('remove_image');
 

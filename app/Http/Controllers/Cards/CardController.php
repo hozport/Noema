@@ -8,7 +8,9 @@ use App\Models\ActivityLog;
 use App\Models\Cards\Card;
 use App\Models\Cards\Story;
 use App\Models\Worlds\World;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 
 class CardController extends Controller
@@ -83,7 +85,7 @@ class CardController extends Controller
         if ($request->exists('content')) {
             $raw = $validated['content'] ?? null;
             if ($raw !== null && $raw !== '') {
-                $markupErrors = NoemaMarkupValidator::validate($raw);
+                $markupErrors = NoemaMarkupValidator::validate($raw, $world);
                 if ($markupErrors !== []) {
                     $message = implode(' ', $markupErrors);
                     if ($request->expectsJson()) {
@@ -139,6 +141,99 @@ class CardController extends Controller
         return redirect()->back();
     }
 
+    /**
+     * Создаёт в истории несколько пустых карточек в конце списка.
+     *
+     * @param  Request  $request  Поле count (1…100)
+     * @param  World  $world  Мир
+     * @param  Story  $story  История
+     */
+    public function bulkCreate(Request $request, World $world, Story $story): RedirectResponse
+    {
+        $this->authorizeStory($world, $story);
+
+        $validated = $request->validate([
+            'count' => ['required', 'integer', 'min:1', 'max:100'],
+        ]);
+
+        $count = (int) $validated['count'];
+
+        DB::transaction(function () use ($story, $count): void {
+            $base = (int) $story->cards()->max('number');
+            for ($i = 0; $i < $count; $i++) {
+                $story->cards()->create([
+                    'title' => null,
+                    'content' => null,
+                    'number' => $base + $i + 1,
+                ]);
+            }
+            $story->renumberCards();
+        });
+
+        ActivityLog::record(
+            $request->user(),
+            $world,
+            'cards.bulk_created',
+            'Добавлено '.$count.' пустых карточек в историю «'.$story->name.'».',
+            $story
+        );
+
+        $msg = $count === 1 ? 'Создана 1 карточка.' : 'Создано карточек: '.$count.'.';
+
+        return redirect()
+            ->route('cards.show', [$world, $story])
+            ->with('success', $msg)
+            ->with('story_cards_scroll_end', true);
+    }
+
+    /**
+     * Последовательно декомпозирует все карточки истории, у которых ≥2 абзацев (та же логика, что у одной карточки).
+     *
+     * @param  World  $world  Мир
+     * @param  Story  $story  История
+     */
+    public function decomposeAll(Request $request, World $world, Story $story): RedirectResponse
+    {
+        $this->authorizeStory($world, $story);
+
+        $changed = false;
+
+        DB::transaction(function () use ($story, &$changed): void {
+            $guard = 0;
+            while ($guard++ < 5000) {
+                $target = $story->cards()
+                    ->orderBy('number')
+                    ->orderBy('id')
+                    ->get()
+                    ->first(fn (Card $c) => count($c->getParagraphs()) >= 2);
+                if ($target === null) {
+                    break;
+                }
+                $this->performCardDecomposition($story, $target);
+                $changed = true;
+            }
+        });
+
+        if (! $changed) {
+            return redirect()
+                ->back()
+                ->with('error', 'Нет карточек с двумя и более абзацами для декомпозиции.');
+        }
+
+        ActivityLog::record(
+            auth()->user(),
+            $world,
+            'cards.decompose_all',
+            'Декомпозиция всех карточек по абзацам в истории «'.$story->name.'».',
+            $story
+        );
+
+        return redirect()
+            ->route('cards.show', [$world, $story])
+            ->with('success', 'Карточки декомпозированы по абзацам.')
+            ->with('story_cards_scroll_end', true);
+    }
+
     public function decompose(Request $request, World $world, Card $card)
     {
         $this->authorizeCard($world, $card);
@@ -149,6 +244,30 @@ class CardController extends Controller
 
         if (count($paragraphs) < 2) {
             return redirect()->back()->with('error', 'Нужно как минимум 2 абзаца для декомпозиции.');
+        }
+
+        $this->performCardDecomposition($story, $card);
+
+        ActivityLog::record(auth()->user(), $world, 'card.decomposed', 'Декомпозиция карточки в истории «'.$story->name.'».', $story);
+
+        if ($request->boolean('redirect_to_story')) {
+            return redirect()->route('cards.show', [$world, $story])->with('success', 'Карточка декомпозирована.');
+        }
+
+        return redirect()->back()->with('success', 'Карточка декомпозирована.');
+    }
+
+    /**
+     * Одна карточка → несколько карточек по абзацам (содержимое `Card::getParagraphs()`).
+     *
+     * @param  Story  $story  История
+     * @param  Card  $card  Карточка (будет удалена)
+     */
+    private function performCardDecomposition(Story $story, Card $card): void
+    {
+        $paragraphs = $card->getParagraphs();
+        if (count($paragraphs) < 2) {
+            return;
         }
 
         $slot = $card->number;
@@ -168,14 +287,6 @@ class CardController extends Controller
         }
 
         $story->renumberCards();
-
-        ActivityLog::record(auth()->user(), $world, 'card.decomposed', 'Декомпозиция карточки в истории «'.$story->name.'».', $story);
-
-        if ($request->boolean('redirect_to_story')) {
-            return redirect()->route('cards.show', [$world, $story])->with('success', 'Карточка декомпозирована.');
-        }
-
-        return redirect()->back()->with('success', 'Карточка декомпозирована.');
     }
 
     public function destroy(Request $request, World $world, Card $card)

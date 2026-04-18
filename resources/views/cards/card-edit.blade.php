@@ -3,6 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    @include('partials.flash-toast-critical-css')
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>{{ $card->displayTitle() }} — {{ $story->name }} — Noema</title>
     <link rel="preconnect" href="https://fonts.bunny.net">
@@ -127,10 +128,10 @@
             </div>
 
             @if (session('success'))
-                <p class="text-success mb-4">{{ session('success') }}</p>
+                <p class="text-success mb-4" role="alert" data-auto-dismiss>{{ session('success') }}</p>
             @endif
             @if (session('error'))
-                <p class="text-error mb-4">{{ session('error') }}</p>
+                <p class="text-error mb-4" role="alert" data-auto-dismiss>{{ session('error') }}</p>
             @endif
 
             <form method="POST" action="{{ route('cards.update', [$world, $card]) }}" id="cardPageEditForm" class="w-full max-w-none">

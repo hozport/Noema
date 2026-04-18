@@ -3,6 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    @include('partials.flash-toast-critical-css')
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>{{ $faction->name }} — Фракции — Noema</title>
     <link rel="preconnect" href="https://fonts.bunny.net">
@@ -111,12 +112,12 @@
                         </svg>
                     </button>
                 </form>
-                @include('partials.activity-log-button', ['world' => $world])
+                @include('partials.activity-log-button', ['world' => $world, 'faction' => $faction])
             </div>
         </div>
 
         @if (session('success'))
-            <p class="text-success mb-4">{{ session('success') }}</p>
+            <p class="text-success mb-4" role="alert" data-auto-dismiss>{{ session('success') }}</p>
         @endif
 
         <div class="flex flex-col lg:flex-row lg:gap-8 gap-6 items-start mb-8">

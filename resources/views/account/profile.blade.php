@@ -13,7 +13,7 @@
     </p>
 
     @if (session('success'))
-        <div role="alert" class="alert alert-success mb-6 rounded-none max-w-2xl">
+        <div role="alert" class="alert alert-success mb-6 rounded-none max-w-2xl" data-auto-dismiss>
             <span>{{ session('success') }}</span>
         </div>
     @endif

@@ -3,6 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    @include('partials.flash-toast-critical-css')
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>{{ $story->name }} — Карточки — Noema</title>
     <link rel="preconnect" href="https://fonts.bunny.net">
@@ -279,34 +280,46 @@
         }
     </style>
 </head>
-<body class="min-h-screen bg-base-100 flex flex-col">
+<body class="min-h-screen bg-base-100 flex flex-col"@if (session('story_cards_scroll_end')) data-story-cards-scroll-end="1"@endif>
     @include('site.partials.header')
 
     <main class="flex-1 p-6 max-w-[1344px] w-full mx-auto">
         <div id="story-page-root" data-world-id="{{ $world->id }}" data-story-id="{{ $story->id }}"
             data-markup-entities-url="{{ route('worlds.markup.entities', $world) }}"
             data-markup-resolve-url="{{ route('worlds.markup.resolve', $world) }}">
-        <div class="flex items-start justify-between mb-8 gap-4">
-            <div class="min-w-0">
+        <div class="mb-8 grid grid-cols-1 gap-y-4 md:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] md:items-center md:gap-x-4 md:gap-y-0">
+            <div class="min-w-0 md:justify-self-start">
                 <h1 class="text-[1.875rem] font-semibold text-base-content leading-tight" style="font-family: 'Cormorant Garamond', Georgia, serif;">{{ $story->name }}</h1>
                 @if (filled($story->cycle))
                     <p class="text-sm text-base-content/55 mt-1">{{ $story->cycle }}</p>
                 @endif
             </div>
-            <div class="flex items-center gap-1 shrink-0 mt-0.5">
-                <a href="{{ route('cards.index', $world) }}" class="btn btn-ghost btn-square" title="Назад к списку историй" aria-label="Назад к списку историй">
+            <div class="flex w-full justify-center gap-2 md:w-auto md:justify-self-center flex-wrap">
+                <button type="button" id="story-open-bulk-cards-modal" class="btn btn-primary btn-sm btn-square shrink-0 rounded-none" title="Создать карточки" aria-label="Создать карточки">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                        <path d="M16 2v4M8 2v4M3 10h18"/>
+                        <path d="M12 15v6M9 18h6"/>
+                    </svg>
+                </button>
+                <button type="button" id="story-decompose-all-btn" class="btn btn-outline btn-sm btn-square shrink-0 rounded-none" title="Декомпозировать все карточки" aria-label="Декомпозировать все карточки">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+                </button>
+            </div>
+            <div class="flex flex-wrap items-center gap-1 justify-end md:justify-self-end">
+                <a href="{{ route('cards.index', $world) }}" class="btn btn-ghost btn-square shrink-0" title="Назад к списку историй" aria-label="Назад к списку историй">
                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                         <path d="M19 12H5M12 19l-7-7 7-7"/>
                     </svg>
                 </a>
-                <a href="{{ route('cards.stories.pdf', [$world, $story]) }}" class="btn btn-ghost btn-square" title="Скачать PDF">
+                <a href="{{ route('cards.stories.pdf', [$world, $story]) }}" class="btn btn-ghost btn-square shrink-0" title="Скачать PDF">
                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                         <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
                         <polyline points="14 2 14 8 20 8"/>
                         <path d="M12 18V9M9 15l3 3 3-3"/>
                     </svg>
                 </a>
-                <button type="button" class="btn btn-ghost btn-square" title="Настройки истории" onclick="document.getElementById('storySettingsModal').showModal()" aria-label="Настройки истории">
+                <button type="button" class="btn btn-ghost btn-square shrink-0" title="Настройки истории" onclick="document.getElementById('storySettingsModal').showModal()" aria-label="Настройки истории">
                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                         <circle cx="12" cy="12" r="3"/>
                         <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
@@ -315,7 +328,7 @@
                 <form method="POST" action="{{ route('cards.stories.destroy', [$world, $story]) }}" class="inline" onsubmit="return confirm('Удалить эту историю? Все её карточки будут удалены безвозвратно. Узлы с этими карточками на досках связей также исчезнут.');">
                     @csrf
                     @method('DELETE')
-                    <button type="submit" class="btn btn-ghost btn-square text-error" title="Удалить историю" aria-label="Удалить историю">
+                    <button type="submit" class="btn btn-ghost btn-square shrink-0 text-error hover:bg-error/15" title="Удалить историю" aria-label="Удалить историю">
                         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                             <polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
                         </svg>
@@ -326,10 +339,10 @@
         </div>
 
         @if (session('success'))
-            <p class="text-success mb-4">{{ session('success') }}</p>
+            <p class="text-success mb-4" role="alert" data-auto-dismiss>{{ session('success') }}</p>
         @endif
         @if (session('error'))
-            <p class="text-error mb-4">{{ session('error') }}</p>
+            <p class="text-error mb-4" role="alert" data-auto-dismiss>{{ session('error') }}</p>
         @endif
 
         @if ($story->cards->isEmpty())
@@ -380,6 +393,7 @@
             @endforeach
         </div>
         @endif
+        <div id="story-cards-scroll-target" class="h-px w-full scroll-mt-24" aria-hidden="true"></div>
 
         <div class="story-book-ornament" role="presentation" aria-hidden="true">
             <svg class="story-book-ornament__icon text-base-content/35" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
@@ -399,6 +413,30 @@
         <p class="story-cards-stat text-sm text-base-content/75 w-full max-w-none">Количество карточек: {{ $story->cards->count() }}</p>
         </div>
     </main>
+
+    <dialog id="storyBulkCardsModal" class="modal modal-middle" aria-labelledby="story-bulk-cards-heading">
+        <div class="modal-box rounded-none border border-base-300 bg-base-200 shadow-2xl p-6 md:p-8 max-w-md w-full">
+            <h2 id="story-bulk-cards-heading" class="font-display text-xl font-semibold text-base-content mb-4">Создать карточки</h2>
+            <form method="POST" action="{{ route('cards.stories.cards.bulk-create', [$world, $story]) }}">
+                @csrf
+                <div class="form-control w-full">
+                    <label class="label py-1" for="story-bulk-cards-count"><span class="label-text">Сколько карточек добавить</span></label>
+                    <input type="number" id="story-bulk-cards-count" name="count" value="1" min="1" max="100" required
+                        class="input input-bordered w-full rounded-none bg-base-100 border-base-300">
+                    <p class="text-xs text-base-content/50 mt-1">Пустые карточки появятся в конце списка (1–100).</p>
+                </div>
+                <div class="modal-action flex flex-wrap gap-2 justify-end pt-4">
+                    <button type="button" class="btn btn-ghost rounded-none" onclick="document.getElementById('storyBulkCardsModal').close()">Отмена</button>
+                    <button type="submit" class="btn btn-primary rounded-none">Создать</button>
+                </div>
+            </form>
+        </div>
+        <form method="dialog" class="modal-backdrop"><button type="submit" class="cursor-default opacity-0 absolute inset-0 w-full h-full" aria-label="Закрыть">close</button></form>
+    </dialog>
+
+    <form id="story-decompose-all-form" method="POST" action="{{ route('cards.stories.decompose-all', [$world, $story]) }}" class="hidden" aria-hidden="true">
+        @csrf
+    </form>
 
     <dialog id="storySettingsModal" class="story-settings-dialog" aria-labelledby="story-settings-heading">
         <div class="story-dialog__viewport">

@@ -3,6 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    @include('partials.flash-toast-critical-css')
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>Таймлайн — {{ $world->name }} — Noema</title>
     <link rel="preconnect" href="https://fonts.bunny.net">
@@ -11,14 +12,62 @@
         @vite(['resources/css/app.css', 'resources/js/app.js', 'resources/js/timeline.js'])
     @endif
     <style>
-        /* Высокий холст; горизонтальная полоса прокрутки у нижнего края области (малый нижний паддинг). */
+        /*
+         * Без фиксированной высоты body flex-элемент с overflow:auto получает min-height от контента
+         * (высота shell = layoutH × зум), и страница растёт при каждом приближении.
+         */
+        html:has(body.timeline-page) {
+            height: 100%;
+        }
+        /*
+         * Высота окна фиксирована: иначе при зуме растёт scrollHeight shell и flex-родители
+         * подстраиваются под контент — «увеличивается весь блок». Скролл только внутри .timeline-canvas-scroll.
+         */
+        /*
+         * Первый экран — только .timeline-page-viewport (шапка + main) в пределах 100dvh.
+         * Футер в потоке body ниже вьюпорта, не участвует в flex-распределении высоты холста.
+         */
+        body.timeline-page {
+            min-height: 100dvh;
+            overflow-x: hidden;
+            overflow-y: auto;
+        }
+        .timeline-page-viewport {
+            height: 100dvh;
+            max-height: 100dvh;
+            min-height: 0;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            flex-shrink: 0;
+        }
+        .timeline-page-viewport > header {
+            flex-shrink: 0;
+        }
+        .timeline-page-viewport > main {
+            min-height: 0;
+            min-width: 0;
+            overflow: hidden;
+        }
+        body.timeline-page > footer {
+            flex-shrink: 0;
+        }
+        /* Высокий холст внутри вьюпорта; горизонтальная полоса прокрутки у нижнего края области. */
         .timeline-canvas-inner { min-height: min(72vh, 880px); }
+        /*
+         * Вьюпорт холста: фиксирован в сетке flex (не растягивается из‑за ширины/высоты контента).
+         * Масштаб меняет только содержимое внутри — полосы прокрутки появляются здесь, не у всей страницы.
+         */
         .timeline-canvas-scroll {
             padding: 10px 10px 2px;
             cursor: grab;
             user-select: none;
             -webkit-user-select: none;
             overflow: auto;
+            min-width: 0;
+            min-height: 0;
+            flex: 1 1 0%;
+            overscroll-behavior: contain;
         }
         .timeline-track-svg { display: block; overflow: visible; }
         .timeline-track-row { overflow: visible; }
@@ -33,10 +82,28 @@
         .timeline-line-hit {
             cursor: grab;
         }
+        /* Подпись и группа: клики только у дорожек с перестановкой (см. timeline.js). */
+        .timeline-line-label {
+            pointer-events: none;
+        }
+        .timeline-track-row--reorderable .timeline-line-label {
+            pointer-events: auto;
+        }
+        .timeline-line-label-reorder-hit {
+            pointer-events: none;
+        }
+        .timeline-track-row--reorderable .timeline-line-label-reorder-hit {
+            pointer-events: all;
+            cursor: ns-resize;
+        }
+        .timeline-track-row--reorderable .timeline-line-hit {
+            cursor: ns-resize;
+        }
         .timeline-canvas-scroll.is-panning {
             cursor: grabbing !important;
         }
         .timeline-canvas-scroll.is-panning .timeline-line-hit,
+        .timeline-canvas-scroll.is-panning .timeline-line-label-reorder-hit,
         .timeline-canvas-scroll.is-panning .timeline-point-hit {
             cursor: grabbing !important;
         }
@@ -198,7 +265,7 @@
             cursor: pointer;
         }
         .timeline-dialog__close:hover { opacity: 1; }
-        /* Футер ниже первого экрана: main не flex-1, занимает почти 100dvh минус шапку. */
+        /* Футер под вьюпортом первого экрана (прокрутка body). */
         body.timeline-page footer {
             margin-top: 0 !important;
         }
@@ -210,37 +277,118 @@
             z-index: 1000 !important; overflow-y: auto !important;
         }
         dialog.timeline-clear-dialog[open]::backdrop { background: rgba(0,0,0,0.6); }
+        .timeline-track-row--reorderable .timeline-line-hit,
+        .timeline-track-row--reorderable .timeline-line-label-reorder-hit {
+            touch-action: none;
+        }
+        .timeline-track-row--reorderable:has(.timeline-line-hit:hover),
+        .timeline-track-row--reorderable:has(.timeline-line-label-reorder-hit:hover) {
+            background-color: oklch(from oklch(var(--b2)) l c h / 0.35);
+        }
+        /*
+         * Важно: #timeline-crosshair — sibling с z-30 на весь холст; обычные дорожки z-10.
+         * Без z-40 весь предпросмотр и пунктир тянущейся строки оказываются ПОД перекрестьем и не видны.
+         */
+        .timeline-track-row.timeline-track-row--dragging {
+            opacity: 0.92;
+            outline: 2px dashed oklch(from oklch(var(--p)) l c h / 0.75);
+            outline-offset: -2px;
+            z-index: 40;
+        }
+        /* Цель переноса: отдельный слой на всю ширину холста, бледнее фона панели */
+        .timeline-swap-target-layer {
+            position: absolute;
+            left: 0;
+            right: 0;
+            top: 0;
+            bottom: 0;
+            width: 100%;
+            z-index: 100;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.08s ease;
+            /* Бледнее, чем типичный фон интерфейса (base-100): лёгкое осветление полосы */
+            background: color-mix(in oklch, oklch(var(--b2)) 72%, white 28%);
+            box-shadow: inset 0 0 0 1px color-mix(in oklch, oklch(var(--bc)) 22%, transparent);
+        }
+        .timeline-track-row.timeline-track-row--swap-preview {
+            position: relative;
+            z-index: 40;
+        }
+        .timeline-track-row.timeline-track-row--swap-preview .timeline-swap-target-layer {
+            opacity: 1;
+        }
+        .timeline-canvas-section {
+            flex: 1 1 0%;
+            min-height: 0;
+            min-width: 0;
+            overflow: hidden;
+            contain: layout;
+        }
+        /* Внутренний контент под зум; размер задаётся в JS (scrollWidth/Height внутри .timeline-canvas-scroll). */
+        .timeline-zoom-shell {
+            position: relative;
+            display: block;
+            width: max-content;
+            max-width: none;
+        }
+        #timeline-jpg-export-root.timeline-zoom-root--scaled {
+            transform-origin: top left;
+        }
+        /* Плавающая панель масштаба: всегда в зоне видимости при прокрутке страницы. */
+        .timeline-zoom-controls-fixed {
+            position: fixed;
+            z-index: 90;
+            bottom: max(1rem, env(safe-area-inset-bottom, 0px));
+            right: max(1rem, env(safe-area-inset-right, 0px));
+            pointer-events: auto;
+            isolation: isolate;
+            border: 1px solid oklch(var(--b3) / 0.85);
+            background: oklch(var(--b1) / 0.96);
+            box-shadow:
+                0 0 0 1px rgb(0 0 0 / 0.12),
+                0 12px 32px -8px rgb(0 0 0 / 0.45);
+            backdrop-filter: blur(8px);
+        }
+        @media (max-width: 480px) {
+            .timeline-zoom-controls-fixed {
+                left: max(1rem, env(safe-area-inset-left, 0px));
+                right: max(1rem, env(safe-area-inset-right, 0px));
+                width: auto;
+                justify-content: center;
+            }
+        }
     </style>
-    <script type="application/json" id="timeline-axis-config">{!! json_encode(['tMin' => $visual['tMin'], 'tMax' => $visual['tMax'], 'canvasWidth' => $visual['canvasWidth']], JSON_THROW_ON_ERROR) !!}</script>
+    <script type="application/json" id="timeline-axis-config">{!! json_encode([
+        'tMin' => $visual['tMin'],
+        'tMax' => $visual['tMax'],
+        'canvasWidth' => $visual['canvasWidth'],
+        'eventYearMin' => $visual['eventYearMin'],
+        'eventYearMax' => $visual['eventYearMax'],
+    ], JSON_THROW_ON_ERROR) !!}</script>
 </head>
-<body class="min-h-screen bg-base-100 flex flex-col timeline-page">
+<body class="bg-base-100 flex flex-col timeline-page" data-world-id="{{ $world->id }}">
+    <div class="timeline-page-viewport">
     @include('site.partials.header')
 
-    <main class="flex flex-col w-full shrink-0 min-h-[calc(100dvh-5.75rem)]">
+    <main class="flex flex-col flex-1 min-h-0 w-full min-w-0">
         <div class="shrink-0 px-6 pt-6 pb-4 w-full">
         @if (session('success'))
-            <div role="alert" class="alert alert-success rounded-none mb-4 max-w-2xl">
+            <div role="alert" class="alert alert-success rounded-none mb-4 max-w-2xl" data-auto-dismiss>
                 <span>{{ session('success') }}</span>
             </div>
         @endif
-        <div class="flex flex-wrap items-start justify-between gap-4 mb-6">
-            <div class="min-w-0">
+        @if (session('error'))
+            <div role="alert" class="alert alert-error rounded-none mb-4 max-w-2xl" data-auto-dismiss>
+                <span>{{ session('error') }}</span>
+            </div>
+        @endif
+        <div class="mb-6 grid grid-cols-1 gap-y-4 md:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] md:items-center md:gap-x-4 md:gap-y-0">
+            <div class="min-w-0 md:justify-self-start">
                 <h1 class="text-[1.875rem] font-semibold text-base-content leading-tight" style="font-family: 'Cormorant Garamond', Georgia, serif;">Таймлайн</h1>
                 <p class="text-base-content/60 mt-1">{{ $world->name }}</p>
             </div>
-            <div class="flex flex-wrap items-center gap-2 shrink-0 mt-0.5 justify-end">
-                <a href="{{ route('worlds.dashboard', $world) }}" class="btn btn-ghost btn-square shrink-0" title="Назад в дашборд" aria-label="Назад в дашборд">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                        <path d="M19 12H5M12 19l-7-7 7-7"/>
-                    </svg>
-                </a>
-                <button type="button" id="timeline-export-jpg" class="btn btn-ghost btn-square shrink-0" title="Сохранить холст в JPG" aria-label="Сохранить в JPG">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                        <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
-                        <circle cx="8.5" cy="8.5" r="1.5"/>
-                        <path d="M21 15l-5-5L5 21"/>
-                    </svg>
-                </button>
+            <div class="flex w-full justify-center gap-2 md:w-auto md:justify-self-center">
                 <button type="button" id="timeline-open-line-dialog" class="btn btn-primary btn-sm btn-square shrink-0 rounded-none" title="Создать линию" aria-label="Создать линию">
                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                         <circle cx="5" cy="12" r="2.5" fill="currentColor" stroke="none"/>
@@ -255,6 +403,26 @@
                         <path d="M12 15v6M9 18h6"/>
                     </svg>
                 </button>
+            </div>
+            <div class="flex flex-wrap items-center gap-1 justify-end md:justify-self-end">
+                <a href="{{ route('worlds.dashboard', $world) }}" class="btn btn-ghost btn-square shrink-0" title="Назад в дашборд" aria-label="Назад в дашборд">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="M19 12H5M12 19l-7-7 7-7"/>
+                    </svg>
+                </a>
+                <a href="{{ route('worlds.timeline.pdf', $world) }}" class="btn btn-ghost btn-square shrink-0" title="Сохранить как PDF" aria-label="Сохранить как PDF">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                        <polyline points="14 2 14 8 20 8"/>
+                        <path d="M12 18V9M9 15l3 3 3-3"/>
+                    </svg>
+                </a>
+                <button type="button" class="btn btn-ghost btn-square shrink-0" title="Настройки таймлайна" aria-label="Настройки таймлайна" onclick="document.getElementById('timelineSettingsModal').showModal()">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <circle cx="12" cy="12" r="3"/>
+                        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+                    </svg>
+                </button>
                 <button type="button" class="btn btn-ghost btn-square shrink-0 text-error hover:bg-error/15" title="Очистить таймлайн" aria-label="Очистить таймлайн" onclick="document.getElementById('timelineClearModal').showModal()">
                     <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                         <path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/>
@@ -265,173 +433,66 @@
         </div>
         </div>
 
-        <div class="flex-1 min-h-0 flex flex-col w-full border-y border-base-300/25 bg-base-200/20 rounded-none">
-            <div class="flex-1 min-h-0 min-h-[280px] timeline-canvas-scroll">
-                <div
-                    id="timeline-jpg-export-root"
-                    class="timeline-canvas-inner relative flex flex-col justify-end"
-                    style="width: {{ $visual['canvasWidth'] }}px"
-                >
-                    <div
-                        class="pointer-events-none absolute left-0 top-0 bottom-0 z-[5] overflow-hidden"
-                        style="width: {{ $visual['canvasWidth'] }}px"
-                        aria-hidden="true"
-                    >
-                        @foreach ($visual['rulerTicks'] as $ty)
-                            @php
-                                $gx = \App\Support\TimelineVisualDemo::yearToX($ty, $visual['tMin'], $visual['tMax'], $visual['canvasWidth']);
-                            @endphp
-                            <div
-                                class="absolute top-0 bottom-0 w-px bg-base-content/[0.07]"
-                                style="left: {{ $gx }}px;"
-                            ></div>
-                        @endforeach
-                    </div>
-                    @foreach ($visual['tracks'] as $track)
-                        @php
-                            $h = $track['kind'] === 'main' ? 56 : 48;
-                            $mid = $h / 2;
-                            $x1 = \App\Support\TimelineVisualDemo::yearToX($track['lineFromYear'], $visual['tMin'], $visual['tMax'], $visual['canvasWidth']);
-                            $x2 = \App\Support\TimelineVisualDemo::yearToX($track['lineToYear'], $visual['tMin'], $visual['tMax'], $visual['canvasWidth']);
-                            $hitPad = 12;
-                            $labelText = \Illuminate\Support\Str::limit($track['label'], 42);
-                            $startsAtEpoch = $track['lineFromYear'] === $visual['tMin'];
-                            if ($startsAtEpoch) {
-                                $labelX = 22;
-                                $labelAnchor = 'start';
-                            } else {
-                                $labelX = max(0.0, $x1 - 8);
-                                $labelAnchor = 'end';
-                            }
-                            $labelY = $startsAtEpoch
-                                ? $mid - ($track['strokeWidth'] / 2) - 12
-                                : $mid;
-                        @endphp
-                        <div class="timeline-track-row relative z-[10] shrink-0 bg-base-100/25" style="height: {{ $h }}px;">
-                            <svg class="timeline-track-svg relative z-[10] w-full" viewBox="0 0 {{ $visual['canvasWidth'] }} {{ $h }}" width="{{ $visual['canvasWidth'] }}" height="{{ $h }}" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-                                <line
-                                    class="timeline-line-draw"
-                                    x1="{{ $x1 }}"
-                                    y1="{{ $mid }}"
-                                    x2="{{ $x2 }}"
-                                    y2="{{ $mid }}"
-                                    stroke="{{ $track['color'] }}"
-                                    stroke-width="{{ $track['strokeWidth'] }}"
-                                    stroke-linecap="round"
-                                    style="--line-sw: {{ $track['strokeWidth'] }};"
-                                />
-                                @php
-                                    $hitBandW = abs($x2 - $x1);
-                                    $hitBandX = min($x1, $x2);
-                                    $hitBandH = max(28, (int) $track['strokeWidth'] + 22);
-                                    $hitBandY = $mid - $hitBandH / 2;
-                                @endphp
-                                <rect
-                                    class="timeline-line-hit"
-                                    x="{{ $hitBandX }}"
-                                    y="{{ $hitBandY }}"
-                                    width="{{ max(1, $hitBandW) }}"
-                                    height="{{ $hitBandH }}"
-                                    fill="transparent"
-                                    data-track-label="{{ e($track['label']) }}"
-                                    data-line-id="{{ $track['id'] }}"
-                                />
-                                @foreach ($track['eventGroups'] as $group)
-                                    @php
-                                        $cx = \App\Support\TimelineVisualDemo::yearToX($group['year'], $visual['tMin'], $visual['tMax'], $visual['canvasWidth']);
-                                        $tooltipPayload = [
-                                            'year' => $group['year'],
-                                            'titles' => $group['titles'],
-                                            'exactDates' => $group['exactDates'],
-                                            'lineLabel' => $track['label'],
-                                            'count' => $group['count'],
-                                            'eventIds' => $group['eventIds'] ?? [],
-                                        ];
-                                        $hitR = $track['dotRadius'] + $hitPad;
-                                    @endphp
-                                    <g class="timeline-point-group">
-                                        <circle
-                                            cx="{{ $cx }}"
-                                            cy="{{ $mid }}"
-                                            r="{{ $track['dotRadius'] }}"
-                                            fill="{{ $track['color'] }}"
-                                        />
-                                        @if ($group['count'] > 1)
-                                            <text
-                                                x="{{ $cx }}"
-                                                y="{{ $mid - $track['dotRadius'] - 6 }}"
-                                                text-anchor="middle"
-                                                fill="rgba(255,255,255,0.82)"
-                                                font-size="11"
-                                                font-family="system-ui, sans-serif"
-                                            >×{{ $group['count'] }}</text>
-                                        @endif
-                                        <circle
-                                            class="timeline-point-hit cursor-grab"
-                                            cx="{{ $cx }}"
-                                            cy="{{ $mid }}"
-                                            r="{{ $hitR }}"
-                                            fill="transparent"
-                                            stroke="none"
-                                            data-tooltip='@json($tooltipPayload)'
-                                            data-track-label="{{ e($track['label']) }}"
-                                            data-line-id="{{ $track['id'] }}"
-                                        />
-                                    </g>
-                                @endforeach
-                                <g class="pointer-events-none timeline-line-label" style="isolation: isolate;">
-                                    <title>{{ $track['label'] }}</title>
-                                    <text
-                                        x="{{ $labelX }}"
-                                        y="{{ $labelY }}"
-                                        text-anchor="{{ $labelAnchor }}"
-                                        dominant-baseline="middle"
-                                        fill="rgba(255,255,255,0.72)"
-                                        font-size="11"
-                                        font-family="ui-sans-serif, system-ui, sans-serif"
-                                        font-weight="600"
-                                        style="text-transform: uppercase; letter-spacing: 0.06em;"
-                                    >{{ $labelText }}</text>
-                                </g>
-                            </svg>
-                        </div>
-                    @endforeach
-
-                    @php
-                        $rulerH = 36;
-                    @endphp
-                    <div class="relative z-[10] shrink-0 bg-base-200/35" style="height: {{ $rulerH }}px;">
-                        <svg class="timeline-track-svg w-full block" viewBox="0 0 {{ $visual['canvasWidth'] }} {{ $rulerH }}" width="{{ $visual['canvasWidth'] }}" height="{{ $rulerH }}" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-                            <line x1="0" y1="1" x2="{{ $visual['canvasWidth'] }}" y2="1" stroke="rgba(255,255,255,0.12)" stroke-width="1"/>
-                            @foreach ($visual['rulerTicks'] as $ty)
-                                @php
-                                    $rx = \App\Support\TimelineVisualDemo::yearToX($ty, $visual['tMin'], $visual['tMax'], $visual['canvasWidth']);
-                                @endphp
-                                <line x1="{{ $rx }}" y1="1" x2="{{ $rx }}" y2="12" stroke="rgba(255,255,255,0.2)" stroke-width="1"/>
-                                <text x="{{ $rx }}" y="{{ $rulerH - 6 }}" text-anchor="middle" fill="rgba(255,255,255,0.4)" font-size="10" font-family="system-ui, sans-serif">{{ $ty }}</text>
-                            @endforeach
-                        </svg>
-                    </div>
-
-                    <div
-                        id="timeline-crosshair"
-                        class="pointer-events-none absolute inset-0 z-[30] hidden"
-                        aria-hidden="true"
-                    >
-                        <div
-                            id="timeline-crosshair-line"
-                            class="absolute top-0 bottom-0 w-px -translate-x-1/2 bg-primary/65"
-                            style="left: 0"
-                        ></div>
-                    </div>
+        <div class="timeline-canvas-section flex-1 min-h-0 min-w-0 flex flex-col w-full border-y border-base-300/25 bg-base-200/20 rounded-none overflow-hidden">
+            <div class="timeline-canvas-scroll w-full">
+                <div id="timeline-zoom-shell" class="timeline-zoom-shell relative">
+                    @include('timeline.partials.canvas-export-root', ['visual' => $visual, 'lineReorderMeta' => $lineReorderMeta])
                 </div>
             </div>
         </div>
     </main>
+    </div>
+
+    <div
+        class="timeline-zoom-controls-fixed flex items-center gap-0.5 rounded-none px-1.5 py-1"
+        id="timeline-zoom-controls"
+        role="group"
+        aria-label="Масштаб холста"
+    >
+        <button type="button" id="timeline-zoom-out" class="btn btn-ghost btn-xs min-h-0 h-8 w-8 p-0 rounded-none" title="Уменьшить (Ctrl + колёсико)" aria-label="Уменьшить масштаб">−</button>
+        <span id="timeline-zoom-label" class="text-[11px] tabular-nums text-base-content/80 min-w-[2.75rem] text-center">100%</span>
+        <button type="button" id="timeline-zoom-in" class="btn btn-ghost btn-xs min-h-0 h-8 w-8 p-0 rounded-none" title="Увеличить (Ctrl + колёсико)" aria-label="Увеличить масштаб">+</button>
+        <button type="button" id="timeline-zoom-reset" class="btn btn-ghost btn-xs min-h-0 h-7 px-1.5 rounded-none text-[11px]" title="Сбросить масштаб" aria-label="Масштаб 100 %">100%</button>
+    </div>
 
     <div id="timeline-point-tooltip" class="timeline-point-tooltip fixed z-[5000] opacity-0 invisible pointer-events-none" role="tooltip"></div>
     <div id="timeline-year-at-cursor" class="pointer-events-none fixed z-[45] hidden opacity-0 invisible" aria-hidden="true">0 г.</div>
     <div id="timeline-context-menu" class="fixed z-[10050] hidden" role="menu" aria-hidden="true"></div>
+
+    <dialog id="timelineSettingsModal" class="modal modal-middle" aria-labelledby="timeline-settings-heading">
+        <div class="modal-box rounded-none border border-base-300 bg-base-200 shadow-2xl p-6 md:p-8 max-w-lg w-full">
+            <h2 id="timeline-settings-heading" class="font-display text-xl font-semibold text-base-content mb-4">Настройки таймлайна</h2>
+            <form id="timeline-settings-form" method="POST" action="{{ route('worlds.timeline.world-reference.update', $world) }}">
+                @csrf
+                @method('PUT')
+                <div class="form-control w-full">
+                    <label class="label py-1" for="timeline-settings-reference"><span class="label-text">Инициирующее событие</span></label>
+                    <input type="text" id="timeline-settings-reference" name="reference_point" value="{{ old('reference_point', $world->reference_point) }}" maxlength="255"
+                        class="input input-bordered w-full rounded-none bg-base-100 border-base-300 @error('reference_point') input-error @enderror"
+                        placeholder="Подпись нуля на шкале времени">
+                    <p class="text-xs text-base-content/50 mt-1">Отображается на шкале времени и в связанных подсказках.</p>
+                    <p id="timeline-settings-err-reference_point" class="text-error text-sm mt-1 {{ $errors->has('reference_point') ? '' : 'hidden' }}" role="alert">
+                        @if ($errors->has('reference_point')) {{ $errors->first('reference_point') }} @endif
+                    </p>
+                </div>
+                <div class="form-control w-full mt-4">
+                    <label class="label py-1" for="timeline-settings-max-year"><span class="label-text">Ограничить таймлайн</span></label>
+                    <input type="number" id="timeline-settings-max-year" name="timeline_max_year" value="{{ old('timeline_max_year', $world->timeline_max_year) }}" min="0"
+                        class="input input-bordered w-full rounded-none bg-base-100 border-base-300 @error('timeline_max_year') input-error @enderror"
+                        placeholder="Последний год на шкале (пусто — без ограничения)">
+                    <p class="text-xs text-base-content/50 mt-1">Правая граница шкалы — этот год (можно дальше данных). Дублирует поле в настройках мира на дашборде.</p>
+                    <p id="timeline-settings-err-timeline_max_year" class="text-error text-sm mt-1 {{ $errors->has('timeline_max_year') ? '' : 'hidden' }}" role="alert">
+                        @if ($errors->has('timeline_max_year')) {{ $errors->first('timeline_max_year') }} @endif
+                    </p>
+                </div>
+                <div class="modal-action flex flex-wrap gap-2 justify-end pt-4">
+                    <button type="button" class="btn btn-ghost rounded-none" onclick="document.getElementById('timelineSettingsModal').close()">Отмена</button>
+                    <button type="submit" class="btn btn-primary rounded-none">Сохранить</button>
+                </div>
+            </form>
+        </div>
+        <form method="dialog" class="modal-backdrop"><button type="submit" class="cursor-default opacity-0 absolute inset-0 w-full h-full" aria-label="Закрыть">close</button></form>
+    </dialog>
 
     <dialog id="timelineClearModal" class="modal modal-middle timeline-clear-dialog">
         <div class="modal-box rounded-none border border-base-300 bg-base-200 shadow-2xl p-6 md:p-8 max-w-lg w-full">
@@ -446,7 +507,7 @@
         <form method="dialog" class="modal-backdrop"><button type="submit" class="cursor-default opacity-0 absolute inset-0 w-full h-full" aria-label="Закрыть">close</button></form>
     </dialog>
 
-    @include('timeline.partials.modals', ['world' => $world, 'timelineLines' => $timelineLines, 'timelineEventsForJs' => $timelineEventsForJs])
+    @include('timeline.partials.modals', ['world' => $world, 'timelineLines' => $timelineLines, 'timelineEventsForJs' => $timelineEventsForJs, 'timelineEventSourceOptions' => $timelineEventSourceOptions])
 
     @if ($errors->any() && old('form_context') === 'line_edit' && old('edit_line_id'))
         <script>
@@ -467,10 +528,20 @@
                 window.timelineResumeEventEdit?.({{ (int) old('edit_event_id') }});
             });
         </script>
-    @elseif ($errors->any() && old('form_context') === 'event_create' && ($errors->has('timeline_line_id') || $errors->has('title') || $errors->has('epoch_year') || $errors->has('month') || $errors->has('day') || $errors->has('breaks_line')))
+    @elseif ($errors->any() && old('form_context') === 'event_create' && ($errors->has('timeline_line_id') || $errors->has('title') || $errors->has('epoch_year') || $errors->has('month') || $errors->has('day') || $errors->has('breaks_line') || $errors->has('biography_event_id') || $errors->has('faction_event_id')))
         <script>
             document.addEventListener('DOMContentLoaded', function () {
                 document.getElementById('timeline-event-dialog')?.showModal();
+                @if (old('biography_event_id') || old('faction_event_id'))
+                    document.getElementById('timeline-event-source-wrap')?.classList.remove('hidden');
+                @endif
+            });
+        </script>
+    @endif
+    @if ($errors->has('reference_point') || $errors->has('timeline_max_year'))
+        <script>
+            document.addEventListener('DOMContentLoaded', function () {
+                document.getElementById('timelineSettingsModal')?.showModal();
             });
         </script>
     @endif

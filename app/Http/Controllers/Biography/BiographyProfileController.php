@@ -315,7 +315,7 @@ class BiographyProfileController extends Controller
         foreach (['short_description', 'full_description'] as $field) {
             $raw = $validated[$field] ?? null;
             if ($raw !== null && $raw !== '') {
-                $markupErrors = NoemaMarkupValidator::validate($raw);
+                $markupErrors = NoemaMarkupValidator::validate($raw, $world);
                 if ($markupErrors !== []) {
                     throw ValidationException::withMessages([
                         $field => implode(' ', $markupErrors),

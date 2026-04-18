@@ -422,9 +422,39 @@ function initStoryCardsFilter() {
     });
 }
 
+function initStoryPageToolbar() {
+    document.getElementById('story-open-bulk-cards-modal')?.addEventListener('click', () => {
+        document.getElementById('storyBulkCardsModal')?.showModal();
+    });
+    document.getElementById('story-decompose-all-btn')?.addEventListener('click', () => {
+        if (
+            !window.confirm(
+                'Разбить все карточки с несколькими абзацами на отдельные карточки? Порядок обработки — по номерам. Отменить действие будет нельзя.',
+            )
+        ) {
+            return;
+        }
+        document.getElementById('story-decompose-all-form')?.submit();
+    });
+}
+
+function initStoryCardsScrollToEnd() {
+    if (document.body.dataset.storyCardsScrollEnd !== '1') {
+        return;
+    }
+    delete document.body.dataset.storyCardsScrollEnd;
+    requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+            document.getElementById('story-cards-scroll-target')?.scrollIntoView({ behavior: 'smooth', block: 'end' });
+        });
+    });
+}
+
 document.addEventListener('DOMContentLoaded', () => {
     initStoryPageModals();
     initStoryCardsFilter();
+    initStoryPageToolbar();
+    initStoryCardsScrollToEnd();
 
     const list = document.getElementById('story-cards-sortable');
     const pageRoot = getPageRoot();

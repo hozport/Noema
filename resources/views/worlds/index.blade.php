@@ -4,7 +4,7 @@
 
 @section('content')
         @if (session('success'))
-            <p class="text-success mb-4">{{ session('success') }}</p>
+            <p class="text-success mb-4" role="alert" data-auto-dismiss>{{ session('success') }}</p>
         @endif
 
         <div class="flex flex-col gap-4 mb-10">

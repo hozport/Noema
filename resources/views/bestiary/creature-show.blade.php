@@ -3,6 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    @include('partials.flash-toast-critical-css')
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>{{ $creature->name }} — Бестиарий — Noema</title>
     <link rel="preconnect" href="https://fonts.bunny.net">
@@ -133,7 +134,7 @@
 
     <main class="flex-1 p-6 max-w-[1344px] w-full mx-auto" data-markup-resolve-url="{{ route('worlds.markup.resolve', $world) }}">
         @if (session('success'))
-            <p class="text-success mb-4">{{ session('success') }}</p>
+            <p class="text-success mb-4" role="alert" data-auto-dismiss>{{ session('success') }}</p>
         @endif
 
         <div class="flex items-start justify-between gap-4 mb-6">
@@ -171,7 +172,7 @@
                         </svg>
                     </button>
                 </form>
-                @include('partials.activity-log-button', ['world' => $world])
+                @include('partials.activity-log-button', ['world' => $world, 'creature' => $creature])
             </div>
         </div>
 

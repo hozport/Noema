@@ -3,6 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    @include('partials.flash-toast-critical-css')
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>Бестиарий — {{ $world->name }} — Noema</title>
     <link rel="preconnect" href="https://fonts.bunny.net">
@@ -132,7 +133,7 @@
                             <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
                         </svg>
                     </button>
-                    @include('partials.activity-log-button', ['world' => $world])
+                    @include('partials.activity-log-button', ['world' => $world, 'bestiaryModuleJournal' => true])
                 </div>
             </div>
             <div class="flex flex-wrap items-center gap-3 min-w-0">

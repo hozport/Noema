@@ -22,12 +22,24 @@
 @endphp
 <script type="application/json" id="timeline-lines-config">{!! json_encode($linesForJson, JSON_THROW_ON_ERROR) !!}</script>
 <script type="application/json" id="timeline-events-config">{!! json_encode($eventsForJson, JSON_THROW_ON_ERROR) !!}</script>
+@php
+    $timelineEventSourceOptions = $timelineEventSourceOptions ?? [
+        'biographies' => [],
+        'factions' => [],
+        'biography_events_by_biography' => [],
+        'faction_events_by_faction' => [],
+        'biography_event_lookup' => [],
+        'faction_event_lookup' => [],
+    ];
+@endphp
+<script type="application/json" id="timeline-event-source-options">{!! json_encode($timelineEventSourceOptions, JSON_THROW_ON_ERROR) !!}</script>
 <script type="application/json" id="timeline-page-meta">{!! json_encode([
     'worldId' => $world->id,
     'csrf' => csrf_token(),
     'urls' => [
         'lineUpdate' => url('/worlds/'.$world->id.'/timeline/lines/__ID__'),
         'lineDestroy' => url('/worlds/'.$world->id.'/timeline/lines/__ID__'),
+        'lineMove' => url('/worlds/'.$world->id.'/timeline/lines/__ID__/move'),
         'eventUpdate' => url('/worlds/'.$world->id.'/timeline/events/__ID__'),
         'eventDestroy' => url('/worlds/'.$world->id.'/timeline/events/__ID__'),
     ],
@@ -87,15 +99,40 @@
             </button>
             <h2 id="timeline-event-dialog-title" class="text-lg font-semibold text-base-content px-4 pt-4 pr-12">Новое событие</h2>
             <div class="timeline-dialog__scroll px-4 pb-2">
-                @if ($errors->has('timeline_line_id') || $errors->has('title') || $errors->has('epoch_year') || $errors->has('month') || $errors->has('day') || $errors->has('breaks_line'))
+                @if ($errors->has('timeline_line_id') || $errors->has('title') || $errors->has('epoch_year') || $errors->has('month') || $errors->has('day') || $errors->has('breaks_line') || $errors->has('biography_event_id') || $errors->has('faction_event_id'))
                     <div class="alert alert-error rounded-none text-sm mb-3">
-                        @foreach (['timeline_line_id', 'title', 'epoch_year', 'month', 'day', 'breaks_line'] as $f)
+                        @foreach (['timeline_line_id', 'title', 'epoch_year', 'month', 'day', 'breaks_line', 'biography_event_id', 'faction_event_id'] as $f)
                             @error($f)
                                 <div>{{ $message }}</div>
                             @enderror
                         @endforeach
                     </div>
                 @endif
+                <input type="hidden" name="biography_event_id" id="timeline-event-biography-event-id" value="{{ old('biography_event_id') }}" @if (! old('biography_event_id')) disabled @endif>
+                <input type="hidden" name="faction_event_id" id="timeline-event-faction-event-id" value="{{ old('faction_event_id') }}" @if (! old('faction_event_id')) disabled @endif>
+                <div id="timeline-event-source-wrap" class="hidden space-y-3 mb-1">
+                    <p class="text-xs text-base-content/60">Событие можно привязать к записи в модуле — поля ниже заполнятся из источника, их можно изменить.</p>
+                    <label class="form-control w-full">
+                        <span class="label-text text-base-content/80">Источник</span>
+                        <select id="timeline-event-source-module" class="select select-bordered rounded-none w-full bg-base-200 border-base-300">
+                            <option value="">— Не выбрано —</option>
+                            <option value="biographies">Биографии</option>
+                            <option value="factions">Фракции</option>
+                        </select>
+                    </label>
+                    <label class="form-control w-full">
+                        <span class="label-text text-base-content/80">Персонаж или фракция</span>
+                        <select id="timeline-event-source-entity" class="select select-bordered rounded-none w-full bg-base-200 border-base-300" disabled>
+                            <option value="">— Сначала выберите источник —</option>
+                        </select>
+                    </label>
+                    <label class="form-control w-full">
+                        <span class="label-text text-base-content/80">Событие</span>
+                        <select id="timeline-event-source-event" class="select select-bordered rounded-none w-full bg-base-200 border-base-300" disabled>
+                            <option value="">— Сначала выберите персонажа или фракцию —</option>
+                        </select>
+                    </label>
+                </div>
                 <div id="timeline-event-line-field-wrap">
                     <label class="form-control w-full">
                         <span class="label-text text-base-content/80">Линия</span>

@@ -15,20 +15,42 @@ use Illuminate\Support\Facades\Storage;
 
 class World extends Model
 {
+    /**
+     * @var array<string, mixed>
+     */
+    protected $attributes = [
+        'setting' => 'fantasy',
+    ];
+
     protected $fillable = [
         'user_id',
         'name',
         'reference_point',
+        'timeline_max_year',
         'annotation',
         'image_path',
         'onoff',
+        'setting',
+        'map_drawing_lines',
+        'map_fill_path',
     ];
 
     protected function casts(): array
     {
         return [
             'onoff' => 'boolean',
+            'setting' => WorldSetting::class,
+            'map_drawing_lines' => 'array',
         ];
+    }
+
+    protected static function booted(): void
+    {
+        static::deleting(function (World $world) {
+            if ($world->map_fill_path !== null && $world->map_fill_path !== '') {
+                Storage::disk('public')->delete($world->map_fill_path);
+            }
+        });
     }
 
     public function scopeActive($query)
