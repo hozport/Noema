@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\User;
 use App\Models\Worlds\World;
+use App\Models\Worlds\WorldMap;
 use App\Models\Worlds\WorldMapSprite;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -20,8 +21,16 @@ class WorldMapSpritesApiTest extends TestCase
             'name' => 'W',
             'onoff' => true,
         ]);
+        $map = WorldMap::query()->create([
+            'world_id' => $world->id,
+            'title' => 'Карта',
+            'width' => 3000,
+            'height' => 3000,
+            'map_drawing_lines' => [],
+            'map_fill_path' => null,
+        ]);
 
-        $response = $this->actingAs($user)->postJson(route('worlds.maps.sprites.store', $world), [
+        $response = $this->actingAs($user)->postJson(route('worlds.maps.sprites.store', [$world, $map]), [
             'sprite_path' => 'Поселения/gorod_1.svg',
             'pos_x' => 100.5,
             'pos_y' => 200.25,
@@ -33,7 +42,7 @@ class WorldMapSpritesApiTest extends TestCase
             ]);
 
         $this->assertDatabaseHas('world_map_sprites', [
-            'world_id' => $world->id,
+            'world_map_id' => $map->id,
             'sprite_path' => 'Поселения/gorod_1.svg',
         ]);
     }
@@ -46,15 +55,23 @@ class WorldMapSpritesApiTest extends TestCase
             'name' => 'W',
             'onoff' => true,
         ]);
+        $map = WorldMap::query()->create([
+            'world_id' => $world->id,
+            'title' => 'Карта',
+            'width' => 3000,
+            'height' => 3000,
+            'map_drawing_lines' => [],
+            'map_fill_path' => null,
+        ]);
 
         $sprite = WorldMapSprite::query()->create([
-            'world_id' => $world->id,
+            'world_map_id' => $map->id,
             'sprite_path' => 'Поселения/gorod_1.svg',
             'pos_x' => 10,
             'pos_y' => 20,
         ]);
 
-        $this->actingAs($user)->putJson(route('worlds.maps.sprites.update', [$world, $sprite]), [
+        $this->actingAs($user)->putJson(route('worlds.maps.sprites.update', [$world, $map, $sprite]), [
             'title' => 'Городок',
             'description' => "Строка один.\nСтрока два.",
         ])->assertOk()
@@ -79,15 +96,23 @@ class WorldMapSpritesApiTest extends TestCase
             'name' => 'W',
             'onoff' => true,
         ]);
+        $map = WorldMap::query()->create([
+            'world_id' => $world->id,
+            'title' => 'Карта',
+            'width' => 3000,
+            'height' => 3000,
+            'map_drawing_lines' => [],
+            'map_fill_path' => null,
+        ]);
 
         $sprite = WorldMapSprite::query()->create([
-            'world_id' => $world->id,
+            'world_map_id' => $map->id,
             'sprite_path' => 'Поселения/gorod_1.svg',
             'pos_x' => 10,
             'pos_y' => 20,
         ]);
 
-        $this->actingAs($user)->putJson(route('worlds.maps.sprites.update', [$world, $sprite]), [
+        $this->actingAs($user)->putJson(route('worlds.maps.sprites.update', [$world, $map, $sprite]), [
             'pos_x' => 150,
             'pos_y' => 250,
         ])->assertOk()
@@ -111,16 +136,24 @@ class WorldMapSpritesApiTest extends TestCase
             'name' => 'W',
             'onoff' => true,
         ]);
+        $map = WorldMap::query()->create([
+            'world_id' => $world->id,
+            'title' => 'Карта',
+            'width' => 3000,
+            'height' => 3000,
+            'map_drawing_lines' => [],
+            'map_fill_path' => null,
+        ]);
 
         $sprite = WorldMapSprite::query()->create([
-            'world_id' => $world->id,
+            'world_map_id' => $map->id,
             'sprite_path' => 'Поселения/gorod_1.svg',
             'pos_x' => 10,
             'pos_y' => 20,
         ]);
 
         $this->actingAs($user)
-            ->deleteJson(route('worlds.maps.sprites.destroy', [$world, $sprite]))
+            ->deleteJson(route('worlds.maps.sprites.destroy', [$world, $map, $sprite]))
             ->assertOk()
             ->assertJson(['ok' => true]);
 
@@ -135,14 +168,22 @@ class WorldMapSpritesApiTest extends TestCase
             'name' => 'W',
             'onoff' => true,
         ]);
+        $map = WorldMap::query()->create([
+            'world_id' => $world->id,
+            'title' => 'Карта',
+            'width' => 3000,
+            'height' => 3000,
+            'map_drawing_lines' => [],
+            'map_fill_path' => null,
+        ]);
 
-        $this->actingAs($user)->postJson(route('worlds.maps.sprites.store', $world), [
+        $this->actingAs($user)->postJson(route('worlds.maps.sprites.store', [$world, $map]), [
             'sprite_path' => '../.env',
             'pos_x' => 0,
             'pos_y' => 0,
         ])->assertStatus(422);
 
-        $this->actingAs($user)->postJson(route('worlds.maps.sprites.store', $world), [
+        $this->actingAs($user)->postJson(route('worlds.maps.sprites.store', [$world, $map]), [
             'sprite_path' => 'НетТакойПапки/x.svg',
             'pos_x' => 0,
             'pos_y' => 0,
@@ -158,15 +199,23 @@ class WorldMapSpritesApiTest extends TestCase
             'name' => 'W',
             'onoff' => true,
         ]);
+        $map = WorldMap::query()->create([
+            'world_id' => $world->id,
+            'title' => 'Карта',
+            'width' => 3000,
+            'height' => 3000,
+            'map_drawing_lines' => [],
+            'map_fill_path' => null,
+        ]);
 
-        $this->actingAs($other)->postJson(route('worlds.maps.sprites.store', $world), [
+        $this->actingAs($other)->postJson(route('worlds.maps.sprites.store', [$world, $map]), [
             'sprite_path' => 'Поселения/gorod_1.svg',
             'pos_x' => 0,
             'pos_y' => 0,
         ])->assertForbidden();
     }
 
-    public function test_cannot_update_sprite_from_another_world(): void
+    public function test_cannot_update_sprite_from_another_map(): void
     {
         $user = User::factory()->create();
         $worldA = World::query()->create([
@@ -179,21 +228,37 @@ class WorldMapSpritesApiTest extends TestCase
             'name' => 'B',
             'onoff' => true,
         ]);
+        $mapA = WorldMap::query()->create([
+            'world_id' => $worldA->id,
+            'title' => 'Карта A',
+            'width' => 3000,
+            'height' => 3000,
+            'map_drawing_lines' => [],
+            'map_fill_path' => null,
+        ]);
+        $mapB = WorldMap::query()->create([
+            'world_id' => $worldB->id,
+            'title' => 'Карта B',
+            'width' => 3000,
+            'height' => 3000,
+            'map_drawing_lines' => [],
+            'map_fill_path' => null,
+        ]);
 
         $sprite = WorldMapSprite::query()->create([
-            'world_id' => $worldA->id,
+            'world_map_id' => $mapA->id,
             'sprite_path' => 'Поселения/gorod_1.svg',
             'pos_x' => 1,
             'pos_y' => 2,
         ]);
 
-        $this->actingAs($user)->putJson(route('worlds.maps.sprites.update', [$worldB, $sprite]), [
+        $this->actingAs($user)->putJson(route('worlds.maps.sprites.update', [$worldB, $mapB, $sprite]), [
             'pos_x' => 99,
             'pos_y' => 99,
         ])->assertNotFound();
     }
 
-    public function test_cannot_delete_sprite_from_another_world(): void
+    public function test_cannot_delete_sprite_from_another_map(): void
     {
         $user = User::factory()->create();
         $worldA = World::query()->create([
@@ -206,16 +271,32 @@ class WorldMapSpritesApiTest extends TestCase
             'name' => 'B',
             'onoff' => true,
         ]);
+        $mapA = WorldMap::query()->create([
+            'world_id' => $worldA->id,
+            'title' => 'Карта A',
+            'width' => 3000,
+            'height' => 3000,
+            'map_drawing_lines' => [],
+            'map_fill_path' => null,
+        ]);
+        $mapB = WorldMap::query()->create([
+            'world_id' => $worldB->id,
+            'title' => 'Карта B',
+            'width' => 3000,
+            'height' => 3000,
+            'map_drawing_lines' => [],
+            'map_fill_path' => null,
+        ]);
 
         $sprite = WorldMapSprite::query()->create([
-            'world_id' => $worldA->id,
+            'world_map_id' => $mapA->id,
             'sprite_path' => 'Поселения/gorod_1.svg',
             'pos_x' => 1,
             'pos_y' => 2,
         ]);
 
         $this->actingAs($user)
-            ->deleteJson(route('worlds.maps.sprites.destroy', [$worldB, $sprite]))
+            ->deleteJson(route('worlds.maps.sprites.destroy', [$worldB, $mapB, $sprite]))
             ->assertNotFound();
 
         $this->assertDatabaseHas('world_map_sprites', ['id' => $sprite->id]);

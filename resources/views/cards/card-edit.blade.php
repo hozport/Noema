@@ -97,12 +97,14 @@
             data-markup-entities-url="{{ route('worlds.markup.entities', $world) }}"
             data-markup-resolve-url="{{ route('worlds.markup.resolve', $world) }}">
 
-            <div class="flex items-start justify-between mb-8 gap-4 flex-wrap">
-                <div class="min-w-0 flex-1">
+            <x-noema-page-head>
+                <x-slot name="title">
                     <h1 class="text-[1.875rem] font-semibold text-base-content leading-tight" style="font-family: 'Cormorant Garamond', Georgia, serif;">{{ $card->displayTitle() }}</h1>
-                    <p class="text-sm text-base-content/55 mt-1">{{ $story->name }} — карточка {{ $card->number }}</p>
-                </div>
-                <div class="flex items-center gap-1 shrink-0 mt-0.5">
+                </x-slot>
+                <x-slot name="below">
+                    <p class="text-sm text-base-content/55">{{ $story->name }} — карточка {{ $card->number }}</p>
+                </x-slot>
+                <x-slot name="actions">
                     <a id="cardPageBackLink" href="{{ route('cards.show', [$world, $story]) }}" class="btn btn-ghost btn-square" title="Назад к карточкам истории" aria-label="Назад к карточкам истории">
                         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                             <path d="M19 12H5M12 19l-7-7 7-7"/>
@@ -122,10 +124,9 @@
                         'world' => $world,
                         'story' => $story,
                         'card' => $card,
-                        'journalTitle' => 'Журнал карточки',
                     ])
-                </div>
-            </div>
+                </x-slot>
+            </x-noema-page-head>
 
             @if (session('success'))
                 <p class="text-success mb-4" role="alert" data-auto-dismiss>{{ session('success') }}</p>

@@ -9,6 +9,11 @@ use Illuminate\Http\Request;
 
 class WorldsListDisplayController extends Controller
 {
+    /**
+     * Сохраняет порядок карточек на странице «Мои миры» (доступно и с /account/settings).
+     *
+     * @param  Request  $request  HTTP-запрос
+     */
     public function update(Request $request): RedirectResponse
     {
         $validated = $request->validate([
@@ -23,6 +28,6 @@ class WorldsListDisplayController extends Controller
             'worlds_list_sort' => $validated['worlds_list_sort'],
         ]);
 
-        return redirect()->route('worlds.index')->with('success', 'Порядок списка миров сохранён.');
+        return back()->with('success', 'Порядок списка миров сохранён.');
     }
 }

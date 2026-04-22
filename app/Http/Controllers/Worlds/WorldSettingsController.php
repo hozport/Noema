@@ -64,10 +64,8 @@ class WorldSettingsController extends Controller
         if ($request->hasFile('image')) {
             $world->deleteImageFile();
             $user = $request->user();
+            $user->ensureUserUploadsDirectory('worlds');
             $worldsDir = $user->getUploadsPath('worlds');
-            if (! is_dir($worldsDir)) {
-                mkdir($worldsDir, 0755, true);
-            }
             $extension = $request->file('image')->getClientOriginalExtension() ?: 'jpg';
             $filename = Str::random(20).'.'.$extension;
             $request->file('image')->move($worldsDir, $filename);

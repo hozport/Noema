@@ -34,10 +34,8 @@ class ProfileController extends Controller
         $user->bio = $validated['bio'] ?? null;
 
         if ($request->hasFile('avatar')) {
+            $user->ensureUserUploadsDirectory('profile');
             $dir = $user->getUploadsPath('profile');
-            if (! is_dir($dir)) {
-                mkdir($dir, 0755, true);
-            }
             if ($user->avatar_path) {
                 $old = $user->getUploadsPath($user->avatar_path);
                 if (is_file($old)) {

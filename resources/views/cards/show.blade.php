@@ -145,6 +145,15 @@
             box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5);
             border-radius: 0;
         }
+        .story-settings-dialog .story-dialog__panel {
+            width: min(50vw, calc(100vw - 2rem));
+            max-width: min(50vw, calc(100vw - 2rem));
+            height: min(90vh, calc(100dvh - 2rem));
+            max-height: min(90vh, calc(100dvh - 2rem));
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
         .story-dialog__close {
             position: absolute;
             top: 0.75rem;
@@ -287,14 +296,11 @@
         <div id="story-page-root" data-world-id="{{ $world->id }}" data-story-id="{{ $story->id }}"
             data-markup-entities-url="{{ route('worlds.markup.entities', $world) }}"
             data-markup-resolve-url="{{ route('worlds.markup.resolve', $world) }}">
-        <div class="mb-8 grid grid-cols-1 gap-y-4 md:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] md:items-center md:gap-x-4 md:gap-y-0">
-            <div class="min-w-0 md:justify-self-start">
+        <x-noema-page-head>
+            <x-slot name="title">
                 <h1 class="text-[1.875rem] font-semibold text-base-content leading-tight" style="font-family: 'Cormorant Garamond', Georgia, serif;">{{ $story->name }}</h1>
-                @if (filled($story->cycle))
-                    <p class="text-sm text-base-content/55 mt-1">{{ $story->cycle }}</p>
-                @endif
-            </div>
-            <div class="flex w-full justify-center gap-2 md:w-auto md:justify-self-center flex-wrap">
+            </x-slot>
+            <x-slot name="center">
                 <button type="button" id="story-open-bulk-cards-modal" class="btn btn-primary btn-sm btn-square shrink-0 rounded-none" title="Создать карточки" aria-label="Создать карточки">
                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                         <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
@@ -305,8 +311,8 @@
                 <button type="button" id="story-decompose-all-btn" class="btn btn-outline btn-sm btn-square shrink-0 rounded-none" title="Декомпозировать все карточки" aria-label="Декомпозировать все карточки">
                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
                 </button>
-            </div>
-            <div class="flex flex-wrap items-center gap-1 justify-end md:justify-self-end">
+            </x-slot>
+            <x-slot name="actions">
                 <a href="{{ route('cards.index', $world) }}" class="btn btn-ghost btn-square shrink-0" title="Назад к списку историй" aria-label="Назад к списку историй">
                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                         <path d="M19 12H5M12 19l-7-7 7-7"/>
@@ -335,24 +341,34 @@
                     </button>
                 </form>
                 @include('partials.activity-log-button', ['world' => $world, 'story' => $story])
-            </div>
+            </x-slot>
+        </x-noema-page-head>
+
+        {{-- Под шапкой: уведомления, цикл, поиск — как фильтр «Цикл» на списке карточек --}}
+        <div class="mt-[15px] mb-8 space-y-[15px]">
+            @if (session('success'))
+                <p class="text-success" role="alert" data-auto-dismiss>{{ session('success') }}</p>
+            @endif
+            @if (session('error'))
+                <p class="text-error" role="alert" data-auto-dismiss>{{ session('error') }}</p>
+            @endif
+            @if (filled($story->cycle))
+                <p class="text-sm text-base-content/55">{{ $story->cycle }}</p>
+            @endif
+
+            @if ($story->cards->isEmpty())
+                <p class="text-base-content/70" role="status">Карточек пока не существует.</p>
+            @else
+                <div class="flex flex-wrap items-center gap-2">
+                    <label for="story-cards-search" class="text-sm text-base-content/70 whitespace-nowrap">Поиск</label>
+                    <input type="search" id="story-cards-search" name="story_cards_search" autocomplete="off"
+                        placeholder="Название, номер или фрагмент текста"
+                        class="input input-bordered input-sm rounded-none bg-base-200 border-base-300 min-w-[12rem] max-w-[20rem] w-full sm:w-auto flex-1 sm:flex-initial">
+                </div>
+            @endif
         </div>
 
-        @if (session('success'))
-            <p class="text-success mb-4" role="alert" data-auto-dismiss>{{ session('success') }}</p>
-        @endif
-        @if (session('error'))
-            <p class="text-error mb-4" role="alert" data-auto-dismiss>{{ session('error') }}</p>
-        @endif
-
-        @if ($story->cards->isEmpty())
-            <p class="text-base-content/70 mb-8" role="status">Карточек пока не существует.</p>
-        @else
-        <div class="mb-6 max-w-md">
-            <input type="search" id="story-cards-search" name="story_cards_search" autocomplete="off"
-                placeholder="Название, номер или фрагмент текста для фильтрации"
-                class="input input-bordered w-full rounded-none bg-base-200 border-base-300">
-        </div>
+        @if ($story->cards->isNotEmpty())
         <div id="story-cards-sortable" class="story-cards-sortable" data-reorder-url="{{ route('cards.reorder', [$world, $story]) }}">
             @foreach ($story->cards as $card)
                 @php
@@ -393,6 +409,7 @@
             @endforeach
         </div>
         @endif
+
         <div id="story-cards-scroll-target" class="h-px w-full scroll-mt-24" aria-hidden="true"></div>
 
         <div class="story-book-ornament" role="presentation" aria-hidden="true">
@@ -441,12 +458,13 @@
     <dialog id="storySettingsModal" class="story-settings-dialog" aria-labelledby="story-settings-heading">
         <div class="story-dialog__viewport">
             <div class="story-dialog__scrim" data-story-settings-close tabindex="-1" aria-hidden="true"></div>
-            <form method="POST" action="{{ route('cards.stories.update', [$world, $story]) }}" class="story-dialog__panel" onclick="event.stopPropagation()">
+            <form method="POST" action="{{ route('cards.stories.update', [$world, $story]) }}" class="story-dialog__panel min-h-0" onclick="event.stopPropagation()">
                 @csrf
                 @method('PUT')
                 @php
                     $cardDisplayMode = old('card_display_mode', $story->card_display_mode ?: \App\Models\Cards\Story::CARD_DISPLAY_MODAL);
                 @endphp
+                <div class="noema-settings-modal-body min-h-0">
                 <h2 id="story-settings-heading" class="text-xl font-semibold mb-4 pr-8">Настройки истории</h2>
                 <label for="storySettingsName" class="story-dialog__field-label block text-sm text-base-content/70 mb-1">Название</label>
                 <input type="text" name="name" id="storySettingsName" value="{{ old('name', $story->name) }}" required maxlength="255"
@@ -494,11 +512,13 @@
                 @error('card_display_mode')
                     <p class="text-error text-sm mt-2">{{ $message }}</p>
                 @enderror
+                </div>
 
-                <div class="mt-6 flex flex-row-reverse flex-wrap gap-2 justify-end">
+                <div class="mt-6 flex flex-row-reverse flex-wrap gap-2 justify-end shrink-0">
                     <button type="submit" id="storySettingsSubmitBtn" class="btn btn-primary rounded-none">Сохранить</button>
                     <button type="button" class="btn btn-ghost rounded-none" data-story-settings-close>Отмена</button>
                 </div>
+                <div class="noema-settings-modal-grow" aria-hidden="true"></div>
                 <button type="button" class="story-dialog__close" data-story-settings-close aria-label="Закрыть" title="Закрыть">
                     <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6L6 18M6 6l12 12"/></svg>
                 </button>

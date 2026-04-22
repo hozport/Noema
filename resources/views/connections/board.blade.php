@@ -179,16 +179,18 @@
 
     <main class="flex flex-col w-full shrink-0 min-h-[calc(100dvh-5.75rem)]">
         <div class="shrink-0 px-6 pt-6 pb-4 w-full">
-            <div class="flex flex-wrap items-start justify-between gap-4 mb-6">
-                <div class="min-w-0">
+            <x-noema-page-head>
+                <x-slot name="title">
                     <h1 class="text-[1.875rem] font-semibold text-base-content leading-tight" style="font-family: 'Cormorant Garamond', Georgia, serif;">{{ $connectionBoard->name }}</h1>
-                    <p class="text-base-content/60 mt-1">
+                </x-slot>
+                <x-slot name="below">
+                    <p class="text-base-content/60">
                         <a href="{{ route('worlds.connections', $world) }}" class="link link-hover">Связи</a>
                         <span class="text-base-content/40 mx-1">·</span>
                         {{ $world->name }}
                     </p>
-                </div>
-                <div class="flex items-center gap-1 shrink-0 mt-0.5">
+                </x-slot>
+                <x-slot name="actions">
                     <a href="{{ route('worlds.connections', $world) }}" class="btn btn-ghost btn-square" title="К списку досок" aria-label="К списку досок">
                         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                             <path d="M19 12H5M12 19l-7-7 7-7"/>
@@ -204,8 +206,8 @@
                         </button>
                     </form>
                     @include('partials.activity-log-button', ['world' => $world, 'connectionBoard' => $connectionBoard])
-                </div>
-            </div>
+                </x-slot>
+            </x-noema-page-head>
         </div>
 
         <div id="connections-link-mode-banner" class="hidden shrink-0 px-6 py-2.5 text-sm text-base-content/95 border-t border-base-300/30" role="status" aria-live="polite">

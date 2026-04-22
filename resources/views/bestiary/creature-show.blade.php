@@ -137,14 +137,16 @@
             <p class="text-success mb-4" role="alert" data-auto-dismiss>{{ session('success') }}</p>
         @endif
 
-        <div class="flex items-start justify-between gap-4 mb-6">
-            <div class="min-w-0 flex-1">
+        <x-noema-page-head>
+            <x-slot name="title">
                 <h1 class="text-[1.875rem] font-semibold text-base-content leading-tight" style="font-family: 'Cormorant Garamond', Georgia, serif;">{{ $creature->name }}</h1>
-                @if (filled($creature->scientific_name))
-                    <p class="text-base-content/60 text-lg mt-1">{{ $creature->scientific_name }}</p>
-                @endif
-            </div>
-            <div class="flex items-center gap-1 shrink-0 mt-0.5">
+            </x-slot>
+            @if (filled($creature->scientific_name))
+                <x-slot name="below">
+                    <p class="text-base-content/60 text-lg">{{ $creature->scientific_name }}</p>
+                </x-slot>
+            @endif
+            <x-slot name="actions">
                 <a href="{{ route('bestiary.index', $world) }}" class="btn btn-ghost btn-square" title="Назад к бестиарию" aria-label="Назад к бестиарию">
                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                         <path d="M19 12H5M12 19l-7-7 7-7"/>
@@ -173,8 +175,8 @@
                     </button>
                 </form>
                 @include('partials.activity-log-button', ['world' => $world, 'creature' => $creature])
-            </div>
-        </div>
+            </x-slot>
+        </x-noema-page-head>
 
         <div class="flex flex-col lg:flex-row lg:gap-8 gap-6 items-start mb-8">
             <div class="w-full lg:w-[20%] shrink-0 min-w-0">

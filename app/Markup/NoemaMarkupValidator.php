@@ -103,7 +103,7 @@ final class NoemaMarkupValidator
         }
 
         $sprites = WorldMapSprite::query()
-            ->where('world_id', $world->id)
+            ->whereHas('worldMap', fn ($q) => $q->where('world_id', $world->id))
             ->whereIn('id', $mapIds)
             ->get(['id', 'title']);
         $byId = $sprites->keyBy('id');

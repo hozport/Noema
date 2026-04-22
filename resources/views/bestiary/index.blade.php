@@ -112,10 +112,19 @@
         @php
             $bestiaryIndexQ = filled($searchQuery) ? ['q' => $searchQuery] : [];
         @endphp
-        <div class="mb-10 space-y-5">
-            <div class="flex flex-wrap items-center justify-between gap-4">
-                <h1 class="text-[1.875rem] font-semibold text-base-content leading-tight min-w-0" style="font-family: 'Cormorant Garamond', Georgia, serif;">Бестиарий</h1>
-                <div class="flex items-center gap-1 shrink-0">
+        <div class="mb-10">
+            <x-noema-page-head>
+                <x-slot name="title">
+                    <h1 class="text-[1.875rem] font-semibold text-base-content leading-tight min-w-0" style="font-family: 'Cormorant Garamond', Georgia, serif;">Бестиарий</h1>
+                </x-slot>
+                <x-slot name="center">
+                    <button type="button" class="btn btn-primary btn-sm btn-square shrink-0 rounded-none" id="bestiary-create-creature" title="Создать существо" aria-label="Создать существо">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+                        </svg>
+                    </button>
+                </x-slot>
+                <x-slot name="actions">
                     <a href="{{ route('worlds.dashboard', $world) }}" class="btn btn-ghost btn-square" title="Назад в дашборд" aria-label="Назад в дашборд">
                         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                             <path d="M19 12H5M12 19l-7-7 7-7"/>
@@ -128,34 +137,30 @@
                             <path d="M12 18V9M9 15l3 3 3-3"/>
                         </svg>
                     </a>
-                    <button type="button" class="btn btn-ghost btn-square" id="bestiary-create-creature" title="Создать существо" aria-label="Создать существо">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                            <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
-                        </svg>
-                    </button>
                     @include('partials.activity-log-button', ['world' => $world, 'bestiaryModuleJournal' => true])
+                </x-slot>
+            </x-noema-page-head>
+            {{-- Линия 2: переключатель алфавита и поиск (см. .cursor/rules/noema-page-head-ui.mdc) --}}
+            <div class="mt-[15px] flex flex-wrap items-center gap-3 min-w-0">
+                <div class="join rounded-none shrink-0" role="group" aria-label="Набор букв">
+                    <a href="{{ route('bestiary.index', array_merge(['world' => $world, 'script' => \App\Support\BestiaryAlphabet::SCRIPT_CYR], $bestiaryIndexQ)) }}"
+                        class="btn btn-sm join-item rounded-none {{ $script === \App\Support\BestiaryAlphabet::SCRIPT_CYR ? 'btn-primary' : 'btn-ghost' }}">А–Я</a>
+                    <a href="{{ route('bestiary.index', array_merge(['world' => $world, 'script' => \App\Support\BestiaryAlphabet::SCRIPT_LAT], $bestiaryIndexQ)) }}"
+                        class="btn btn-sm join-item rounded-none {{ $script === \App\Support\BestiaryAlphabet::SCRIPT_LAT ? 'btn-primary' : 'btn-ghost' }}">A–Z</a>
                 </div>
-            </div>
-            <div class="flex flex-wrap items-center gap-3 min-w-0">
-                    <div class="join rounded-none shrink-0" role="group" aria-label="Набор букв">
-                        <a href="{{ route('bestiary.index', array_merge(['world' => $world, 'script' => \App\Support\BestiaryAlphabet::SCRIPT_CYR], $bestiaryIndexQ)) }}"
-                            class="btn btn-sm join-item rounded-none {{ $script === \App\Support\BestiaryAlphabet::SCRIPT_CYR ? 'btn-primary' : 'btn-ghost' }}">А–Я</a>
-                        <a href="{{ route('bestiary.index', array_merge(['world' => $world, 'script' => \App\Support\BestiaryAlphabet::SCRIPT_LAT], $bestiaryIndexQ)) }}"
-                            class="btn btn-sm join-item rounded-none {{ $script === \App\Support\BestiaryAlphabet::SCRIPT_LAT ? 'btn-primary' : 'btn-ghost' }}">A–Z</a>
-                    </div>
-                    <form method="get" action="{{ route('bestiary.index', $world) }}" class="flex flex-wrap items-center gap-2 flex-1 min-w-0 max-w-xl">
-                        <input type="hidden" name="script" value="{{ $script }}">
-                        <input type="hidden" name="letter" value="{{ $letter }}">
-                        <input type="search" name="q" value="{{ $searchQuery ?? '' }}" placeholder="Начните вводить название…" autocomplete="off"
-                            class="input input-bordered input-sm rounded-none flex-1 min-w-[10rem] bg-base-200 border-base-300">
-                        <button type="submit" class="btn btn-sm btn-primary rounded-none shrink-0">Найти</button>
-                        @if (filled($searchQuery))
-                            <a href="{{ route('bestiary.index', ['world' => $world, 'script' => $script, 'letter' => $letter]) }}" class="btn btn-sm btn-ghost rounded-none shrink-0">Сбросить</a>
-                        @endif
-                    </form>
+                <form method="get" action="{{ route('bestiary.index', $world) }}" class="flex flex-wrap items-center gap-2 flex-1 min-w-0 max-w-xl">
+                    <input type="hidden" name="script" value="{{ $script }}">
+                    <input type="hidden" name="letter" value="{{ $letter }}">
+                    <input type="search" name="q" value="{{ $searchQuery ?? '' }}" placeholder="Начните вводить название…" autocomplete="off"
+                        class="input input-bordered input-sm rounded-none flex-1 min-w-[10rem] bg-base-200 border-base-300">
+                    <button type="submit" class="btn btn-sm btn-primary rounded-none shrink-0">Найти</button>
+                    @if (filled($searchQuery))
+                        <a href="{{ route('bestiary.index', ['world' => $world, 'script' => $script, 'letter' => $letter]) }}" class="btn btn-sm btn-ghost rounded-none shrink-0">Сбросить</a>
+                    @endif
+                </form>
             </div>
 
-            <nav class="bestiary-nav-letters" style="--bestiary-nav-cols: {{ $navColumnCount }};" aria-label="Алфавитный указатель">
+            <nav class="bestiary-nav-letters mt-[15px]" style="--bestiary-nav-cols: {{ $navColumnCount }};" aria-label="Алфавитный указатель">
                 @foreach ($navLetters as $L)
                     @php
                         $cnt = $counts[$L] ?? 0;

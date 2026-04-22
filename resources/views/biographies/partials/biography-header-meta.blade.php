@@ -2,7 +2,7 @@
 @php
     $biography->loadMissing(['raceFaction', 'peopleFaction', 'countryFaction']);
 @endphp
-<p class="text-base-content/60 text-lg mt-1">
+<p class="text-base-content/60 text-lg">
     <span>{{ $biography->lifeYearsLabel() }}</span>
     @if ($biography->raceFaction)
         <span class="text-base-content/35 mx-1" aria-hidden="true">·</span>

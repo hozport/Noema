@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Bestiary;
 use App\Http\Controllers\Controller;
 use App\Models\Worlds\World;
 use App\Support\BestiaryAlphabet;
+use App\Support\DatabaseDriver;
 use Dompdf\Dompdf;
 use Dompdf\Options;
 use Illuminate\Http\Request;
@@ -48,10 +49,18 @@ class BestiaryController extends Controller
         $searchQuery = $q === '' ? null : $q;
 
         if ($searchQuery !== null) {
-            $selectedCreatures = $creatures
-                ->filter(fn ($c) => mb_stripos($c->name, $searchQuery, 0, 'UTF-8') !== false)
-                ->sortBy(fn ($c) => mb_strtolower($c->name, 'UTF-8'))
-                ->values();
+            if (DatabaseDriver::defaultIsPostgres()) {
+                $selectedCreatures = $world->creatures()
+                    ->with('world.user')
+                    ->where('name', 'ilike', DatabaseDriver::likeContainsPattern($searchQuery))
+                    ->orderBy('name')
+                    ->get();
+            } else {
+                $selectedCreatures = $creatures
+                    ->filter(fn ($c) => mb_stripos($c->name, $searchQuery, 0, 'UTF-8') !== false)
+                    ->sortBy(fn ($c) => mb_strtolower($c->name, 'UTF-8'))
+                    ->values();
+            }
         } else {
             $selectedCreatures = $byLetter->get($letter, collect())->sortBy(
                 fn ($c) => mb_strtolower($c->name, 'UTF-8')

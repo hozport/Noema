@@ -42,6 +42,11 @@ return [
     'debug' => (bool) env('APP_DEBUG', false),
 
     /*
+    | Подробные логи загрузки PNG заливки карты в storage/logs (ключ [noema-map-fill]).
+    */
+    'map_fill_debug' => (bool) env('NOEMA_MAP_FILL_DEBUG', false),
+
+    /*
     |--------------------------------------------------------------------------
     | Application URL
     |--------------------------------------------------------------------------

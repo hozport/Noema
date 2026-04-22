@@ -11,7 +11,7 @@ use App\Models\Timeline\TimelineLine;
 use App\Models\Worlds\World;
 use App\Services\WorldReferencePointSyncService;
 use App\Support\TimelinePdfSupport;
-use App\Support\TimelineVisualBuilder;
+use App\Support\TimelineVisualCache;
 use Dompdf\Dompdf;
 use Dompdf\Options;
 use Illuminate\Http\JsonResponse;
@@ -33,7 +33,7 @@ class TimelineController extends Controller
             abort(404);
         }
 
-        $visual = TimelineVisualBuilder::build($world);
+        $visual = TimelineVisualCache::remember($world);
         $timelineLines = $world->timelineLines()->orderBy('is_main')->orderBy('sort_order')->orderBy('id')->get();
 
         $orderedLines = $timelineLines->values();
@@ -232,7 +232,7 @@ class TimelineController extends Controller
 
         if ($request->wantsJson()) {
             $world->refresh();
-            $visual = TimelineVisualBuilder::build($world);
+            $visual = TimelineVisualCache::remember($world);
             $timelineLines = $world->timelineLines()->orderBy('is_main')->orderBy('sort_order')->orderBy('id')->get();
             $orderedLines = $timelineLines->values();
             $lineReorderMeta = $this->buildLineReorderMeta($orderedLines);

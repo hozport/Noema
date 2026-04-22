@@ -23,6 +23,9 @@
                     <li role="none">
                         <a href="{{ route('site.svg-viewer') }}" role="menuitem" class="block px-3 py-2 text-sm rounded-none hover:bg-base-200">{{ __('site.nav.svg_viewer') }}</a>
                     </li>
+                    <li role="none">
+                        <a href="{{ route('site.color-tool') }}" role="menuitem" class="block px-3 py-2 text-sm rounded-none hover:bg-base-200">{{ __('site.nav.color_tool') }}</a>
+                    </li>
                 </ul>
             </div>
         </nav>

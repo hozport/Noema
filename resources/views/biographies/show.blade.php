@@ -79,12 +79,14 @@
     @include('site.partials.header')
 
     <main class="flex-1 p-6 max-w-[1344px] w-full mx-auto" data-markup-resolve-url="{{ route('worlds.markup.resolve', $world) }}">
-        <div class="flex items-start justify-between gap-4 mb-6">
-            <div class="min-w-0 flex-1">
+        <x-noema-page-head>
+            <x-slot name="title">
                 <h1 class="text-[1.875rem] font-semibold text-base-content leading-tight" style="font-family: 'Cormorant Garamond', Georgia, serif;">{{ $biography->name }}</h1>
+            </x-slot>
+            <x-slot name="below">
                 @include('biographies.partials.biography-header-meta', ['world' => $world, 'biography' => $biography])
-            </div>
-            <div class="flex items-center gap-1 shrink-0 mt-0.5">
+            </x-slot>
+            <x-slot name="actions">
                 <a href="{{ route('biographies.index', $world) }}" class="btn btn-ghost btn-square" title="Назад к списку" aria-label="Назад к списку">
                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                         <path d="M19 12H5M12 19l-7-7 7-7"/>
@@ -113,8 +115,8 @@
                     </button>
                 </form>
                 @include('partials.activity-log-button', ['world' => $world, 'biography' => $biography])
-            </div>
-        </div>
+            </x-slot>
+        </x-noema-page-head>
 
         @if (session('success'))
             <p class="text-success mb-4" role="alert" data-auto-dismiss>{{ session('success') }}</p>

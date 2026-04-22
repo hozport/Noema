@@ -1,11 +1,9 @@
 /**
- * Карты мира: Konva, холст 3000×3000, панорамирование, спрайты из public/sprites/…
+ * Карты мира: Konva, холст задаётся на сервере (px), панорамирование, спрайты из public/sprites/…
  */
 
 import Konva from 'konva';
 
-const MAP_W = 3000;
-const MAP_H = 3000;
 const PLACE_SIZE = 48;
 /** Макс. ширина строки подписи: в 2 раза шире объекта — дальше перенос по словам. */
 const LABEL_WRAP_WIDTH = PLACE_SIZE * 2;
@@ -24,10 +22,75 @@ const RULER_H = 14;
 const GRID_STEP = 100;
 /** Толщина линии по умолчанию, если в сохранённых данных нет strokeWidth. */
 const DEFAULT_MAP_LINE_WIDTH = 2;
-/** Два цвета линий: чёрный и серый (ландшафт и границы настраиваются до рисования). */
+
+/** Дефолтный размер холста до initKonva (совпадает с типичным сохранённым картой). */
+const DEFAULT_MAP_SIDE_PX = 3000;
+
+/**
+ * Ограничение ширины/высоты холста (как на сервере).
+ *
+ * @param {unknown} n
+ * @returns {number}
+ */
+function clampMapSide(n) {
+    const v = Math.round(Number(n));
+    if (Number.isNaN(v)) {
+        return DEFAULT_MAP_SIDE_PX;
+    }
+
+    return Math.max(500, Math.min(5000, v));
+}
+
+/**
+ * Дебаг заливки карты в консоль. Выкл.: `localStorage.setItem('noema_map_fill_debug','0')`.
+ * Вкл. явно: `localStorage.setItem('noema_map_fill_debug','1')`. По умолчанию — логи включены.
+ *
+ * @returns {boolean}
+ */
+function mapFillDebugEnabled() {
+    try {
+        const v = window.localStorage?.getItem('noema_map_fill_debug');
+        if (v === '0') {
+            return false;
+        }
+        if (v === '1') {
+            return true;
+        }
+    } catch {
+        // sessionStorage в приватном режиме и т.п.
+    }
+
+    return true;
+}
+
+/**
+ * @param {...unknown} args
+ * @returns {void}
+ */
+function mapFillDebugLog(...args) {
+    if (!mapFillDebugEnabled()) {
+        return;
+    }
+    console.info('[noema-map-fill]', new Date().toISOString(), ...args);
+}
+
+/**
+ * Цвета обводки линий карты (ключи = data-map-*-stroke). Серый — для старых сохранённых карт.
+ *
+ * @type {Record<string, string>}
+ */
 const MAP_LINE_STROKE_BY_KEY = {
     black: 'rgba(26, 24, 20, 0.96)',
     gray: 'rgba(118, 116, 110, 0.96)',
+    earth: '#d4c5b5',
+    grass: '#b8c4a8',
+    water: '#a8b8c4',
+    deep_sea: '#8a9ca8',
+    ice: '#e0e4e8',
+    forest: '#9ca88e',
+    desert: '#e0d4c0',
+    mountain: '#c4b8a8',
+    swamp: '#a8b0a0',
 };
 
 /**
@@ -43,6 +106,22 @@ function clampMapLineWidth(n) {
     }
 
     return Math.max(1, Math.min(20, w));
+}
+
+/**
+ * Числа в точках линии для JSON: NaN/Infinity дают null в JSON.stringify и ломают валидацию Laravel.
+ *
+ * @param {number[]} raw
+ * @returns {number[]}
+ */
+function sanitizeLinePointsForJson(raw) {
+    const out = [];
+    for (let i = 0; i < raw.length; i++) {
+        const n = Number(raw[i]);
+        out.push(Number.isFinite(n) ? n : 0);
+    }
+
+    return out;
 }
 
 /**
@@ -66,9 +145,11 @@ function borderLineDashForStrokeWidth(strokeWidth) {
  * @returns {string}
  */
 function mapLineStrokeCss(key) {
-    const k = key === 'gray' ? 'gray' : 'black';
+    if (key && Object.prototype.hasOwnProperty.call(MAP_LINE_STROKE_BY_KEY, key)) {
+        return MAP_LINE_STROKE_BY_KEY[key];
+    }
 
-    return MAP_LINE_STROKE_BY_KEY[k];
+    return MAP_LINE_STROKE_BY_KEY.black;
 }
 /** Видимая рамка листа карты и стена в маске заливки (мировые px). */
 const MAP_CANVAS_EDGE_STROKE_WIDTH = 1;
@@ -171,16 +252,30 @@ function getMapEraserCursorCss() {
 const GAP_CLOSE_SNAP_PX = 3;
 
 /**
- * Пастельные заливки: трава, земля, вода, снег.
+ * Пастельные заливки карты (ключи совпадают с data-fill-color и --noema-* в CSS).
  *
  * @type {Record<string, string>}
  */
 const FILL_PALETTE = {
-    grass: 'rgba(168, 212, 168, 0.78)',
-    earth: 'rgba(212, 196, 168, 0.78)',
-    water: 'rgba(168, 208, 232, 0.78)',
-    snow: 'rgba(242, 244, 248, 0.88)',
+    earth: 'rgba(212, 197, 181, 0.78)',
+    grass: 'rgba(184, 196, 168, 0.78)',
+    water: 'rgba(168, 184, 196, 0.78)',
+    deep_sea: 'rgba(138, 156, 168, 0.78)',
+    ice: 'rgba(224, 228, 232, 0.78)',
+    forest: 'rgba(156, 168, 142, 0.78)',
+    desert: 'rgba(224, 212, 192, 0.78)',
+    mountain: 'rgba(196, 184, 168, 0.78)',
+    swamp: 'rgba(168, 176, 160, 0.78)',
 };
+
+/** Ключ палитры заливки «Вода» (пена у кромки только для него). */
+const MAP_WATER_FILL_KEY = 'water';
+
+/**
+ * Глубина декоративной полосы от берега вглубь заливки (слои по сетке 4-соседей).
+ * Значение 6: расстояния 0…5 от кромки — градиент от пены к основному цвету воды.
+ */
+const WATER_FOAM_BAND_DEPTH_PX = 6;
 
 /**
  * Konva рендерит в `canvas` внутри `.konvajs-content`; курсор нужно задавать на content/canvas, иначе на холсте «пропадает».
@@ -587,18 +682,22 @@ function applyMapCursor(css) {
  *   draggingSprite: boolean,
  *   drawMode: 'landscape' | 'borders' | 'fill' | 'erase' | null,
  *   landscapeLineWidth: number,
- *   landscapeStrokeKey: 'black' | 'gray',
+ *   landscapeStrokeKey: string,
  *   bordersLineWidth: number,
- *   bordersStrokeKey: 'black' | 'gray',
+ *   bordersStrokeKey: string,
  *   fillColorKey: string,
+ *   waterEdgeDecorate: boolean,
  *   eraseRadius: number,
  *   refreshMapCursor: (() => void) | null,
  *   abortLandscapeDraw: (() => void) | null,
  *   flashPlacementHint: ((msg: string) => void) | null,
  *   mapsCanvasSaveUrl: string | null,
+ *   mapsFillUploadUrl: string | null,
  *   schedulePersistMapCanvas: (() => void) | null,
  *   pruneStaleUndoStrokes: (() => void) | null,
  *   fillNeedsSync: boolean,
+ *   mapWidthPx: number,
+ *   mapHeightPx: number,
  * }} */
 const mapState = {
     selectedSpriteUrl: null,
@@ -625,14 +724,16 @@ const mapState = {
     drawMode: /** @type {'landscape' | 'borders' | 'fill' | 'erase' | null} */ (null),
     /** Толщина линии ландшафта перед рисованием (1…20). */
     landscapeLineWidth: DEFAULT_MAP_LINE_WIDTH,
-    /** Цвет линии ландшафта: black | gray */
-    landscapeStrokeKey: /** @type {'black' | 'gray'} */ ('black'),
+    /** Ключ цвета линии ландшафта (см. MAP_LINE_STROKE_BY_KEY). */
+    landscapeStrokeKey: 'black',
     /** Толщина штриха границ (1…20). */
     bordersLineWidth: DEFAULT_MAP_LINE_WIDTH,
-    /** Цвет штриха границ: black | gray */
-    bordersStrokeKey: /** @type {'black' | 'gray'} */ ('gray'),
-    /** Ключ цвета заливки: grass | earth | water | snow */
+    /** Ключ цвета штриха границ (см. MAP_LINE_STROKE_BY_KEY). */
+    bordersStrokeKey: 'black',
+    /** Ключ цвета заливки (см. FILL_PALETTE). */
     fillColorKey: 'grass',
+    /** Пена/светлая кромка у заливки «Вода» (только при выборе цвета Вода). */
+    waterEdgeDecorate: true,
     /** Радиус кисти ластика (1…100 мировых px). */
     eraseRadius: DEFAULT_ERASE_RADIUS,
     refreshMapCursor: null,
@@ -644,10 +745,16 @@ const mapState = {
     worldSetting: 'fantasy',
     mapLabelFontFamily: 'Cormorant Garamond',
     mapsCanvasSaveUrl: null,
+    /** POST multipart PNG заливки (без base64 в JSON). */
+    mapsFillUploadUrl: null,
     schedulePersistMapCanvas: null,
     pruneStaleUndoStrokes: null,
     /** Локально меняли слой заливки — нужно отправить PNG или явное очищение на сервер. */
     fillNeedsSync: false,
+    /** Ширина мирового холста (px), с сервера или clampMapSide. */
+    mapWidthPx: DEFAULT_MAP_SIDE_PX,
+    /** Высота мирового холста (px). */
+    mapHeightPx: DEFAULT_MAP_SIDE_PX,
 };
 
 function batchDrawMapLayers() {
@@ -659,98 +766,283 @@ function batchDrawMapLayers() {
 let mapCanvasPersistTimer = null;
 
 /**
- * Сохраняет линии ландшафта и PNG заливки на сервер (мир).
+ * PNG из canvas как Blob (для multipart, без base64 в JSON).
+ *
+ * @param {HTMLCanvasElement} canvas
+ * @returns {Promise<Blob>}
+ */
+function canvasToPngBlob(canvas) {
+    return new Promise((resolve, reject) => {
+        canvas.toBlob(
+            (blob) => {
+                if (blob) {
+                    resolve(blob);
+                } else {
+                    reject(new Error('toBlob вернул null'));
+                }
+            },
+            'image/png',
+        );
+    });
+}
+
+/**
+ * PNG из canvas без async (toDataURL + разбор base64) — для синхронного сохранения заливки при pagehide.
+ * где fetch с большим телом может не успеть до выгрузки документа.
+ *
+ * @param {HTMLCanvasElement} canvas
+ * @returns {Blob}
+ */
+function canvasToPngBlobSync(canvas) {
+    const dataUrl = canvas.toDataURL('image/png');
+    const parts = dataUrl.split(',');
+    if (parts.length < 2) {
+        throw new Error('toDataURL: нет данных');
+    }
+    const mimeMatch = parts[0].match(/:(.*?);/);
+    const mime = mimeMatch ? mimeMatch[1] : 'image/png';
+    const bstr = atob(parts[1]);
+    const n = bstr.length;
+    const u8 = new Uint8Array(n);
+    for (let i = 0; i < n; i++) {
+        u8[i] = bstr.charCodeAt(i);
+    }
+
+    return new Blob([u8], { type: mime });
+}
+
+/**
+ * Сохраняет заливку синхронным XHR при выгрузке страницы: fetch в pagehide часто обрывается,
+ * sendBeacon не гарантирует приём и в ряде браузеров ограничен по размеру тела.
+ *
+ * @returns {void}
+ */
+function syncPersistMapFillOnUnloadIfNeeded() {
+    mapFillDebugLog('pagehide:syncPersistMapFillOnUnloadIfNeeded enter', {
+        fillNeedsSync: mapState.fillNeedsSync,
+        hasCanvas: !!mapState.fillCanvas,
+        hasUrl: !!mapState.mapsFillUploadUrl,
+    });
+    if (!mapState.fillNeedsSync || !mapState.fillCanvas || !mapState.mapsFillUploadUrl) {
+        mapFillDebugLog('pagehide:sync skip (nothing to send)');
+
+        return;
+    }
+    let blob;
+    try {
+        blob = canvasToPngBlobSync(mapState.fillCanvas);
+    } catch (e) {
+        mapFillDebugLog('pagehide:sync canvasToPngBlobSync failed', e);
+
+        return;
+    }
+    mapFillDebugLog('pagehide:sync XHR POST', { url: mapState.mapsFillUploadUrl, blobBytes: blob.size });
+    try {
+        const xhr = new XMLHttpRequest();
+        xhr.open('POST', mapState.mapsFillUploadUrl, false);
+        xhr.setRequestHeader('Accept', 'application/json');
+        xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
+        xhr.setRequestHeader('X-CSRF-TOKEN', csrfToken());
+        const fd = new FormData();
+        fd.append('_token', csrfToken());
+        fd.append('fill', blob, 'map_fill.png');
+        xhr.send(fd);
+        mapFillDebugLog('pagehide:sync XHR done', {
+            status: xhr.status,
+            responseLen: xhr.responseText?.length ?? 0,
+            responseHead: (xhr.responseText || '').slice(0, 200),
+        });
+        if (xhr.status >= 200 && xhr.status < 300) {
+            mapState.fillNeedsSync = false;
+        }
+    } catch (e) {
+        mapFillDebugLog('pagehide:sync XHR threw', e);
+    }
+}
+
+/**
+ * Сообщение об ошибке сохранения карты (тост или консоль).
+ *
+ * @param {string} message
+ * @param {string} [detail]
+ * @returns {void}
+ */
+function showMapPersistError(message, detail) {
+    mapFillDebugLog('persist ERROR (toast)', message, detail || '');
+    if (typeof window.showFlashToastMessage === 'function') {
+        window.showFlashToastMessage(message, 'error');
+    } else {
+        console.error(message);
+    }
+    if (detail) {
+        console.error(detail);
+    }
+}
+
+/**
+ * Сохраняет только слой заливки (POST PNG), если выставлен fillNeedsSync.
+ * Вызывается сразу после каждой заливки/ластика по заливке и из общего persist холста.
+ *
+ * @returns {Promise<boolean>} true — нечего отправлять или успех; false — ошибка (флаг синхронизации не сброшен при сбое)
+ */
+async function persistMapFillLayerOnly() {
+    const canvas = mapState.fillCanvas;
+    const fillUploadUrl = mapState.mapsFillUploadUrl;
+    const tokenLen = csrfToken().length;
+    mapFillDebugLog('persistMapFillLayerOnly enter', {
+        fillNeedsSync: mapState.fillNeedsSync,
+        hasCanvas: !!canvas,
+        fillUploadUrl: fillUploadUrl || null,
+        canvasW: canvas?.width,
+        canvasH: canvas?.height,
+        csrfTokenLength: tokenLen,
+    });
+    if (!mapState.fillNeedsSync || !canvas || !fillUploadUrl) {
+        mapFillDebugLog('persistMapFillLayerOnly skip (no-op)', {
+            fillNeedsSync: mapState.fillNeedsSync,
+            hasCanvas: !!canvas,
+            hasUrl: !!fillUploadUrl,
+        });
+
+        return true;
+    }
+    const ctx = canvas.getContext('2d');
+    if (!ctx) {
+        mapFillDebugLog('persistMapFillLayerOnly abort: no 2d context');
+        showMapPersistError('Заливка не сохранена: нет контекста canvas.');
+
+        return false;
+    }
+    let blob;
+    try {
+        blob = await canvasToPngBlob(canvas);
+    } catch (err) {
+        mapFillDebugLog('persistMapFillLayerOnly toBlob failed', err);
+        showMapPersistError(
+            'Не удалось подготовить PNG заливки.',
+            err instanceof Error ? err.message : String(err),
+        );
+
+        return false;
+    }
+    mapFillDebugLog('persistMapFillLayerOnly blob ready', { bytes: blob.size, type: blob.type });
+    const formData = new FormData();
+    formData.append('_token', csrfToken());
+    formData.append('fill', blob, 'map_fill.png');
+    try {
+        mapFillDebugLog('persistMapFillLayerOnly fetch POST start');
+        const res = await fetch(fillUploadUrl, {
+            method: 'POST',
+            headers: {
+                Accept: 'application/json',
+                'X-Requested-With': 'XMLHttpRequest',
+                'X-CSRF-TOKEN': csrfToken(),
+            },
+            body: formData,
+            credentials: 'same-origin',
+        });
+        const text = await res.text().catch(() => '');
+        mapFillDebugLog('persistMapFillLayerOnly fetch done', {
+            ok: res.ok,
+            status: res.status,
+            statusText: res.statusText,
+            bodyHead: text.slice(0, 400),
+        });
+        if (res.ok) {
+            mapState.fillNeedsSync = false;
+            mapFillDebugLog('persistMapFillLayerOnly success, fillNeedsSync=false');
+
+            return true;
+        }
+        showMapPersistError(
+            `Заливка не сохранена (${res.status}).`,
+            text.slice(0, 800),
+        );
+
+        return false;
+    } catch (err) {
+        mapFillDebugLog('persistMapFillLayerOnly fetch threw', err);
+        showMapPersistError(
+            'Не удалось отправить заливку (сеть).',
+            err instanceof Error ? err.message : String(err),
+        );
+
+        return false;
+    }
+}
+
+/**
+ * Сохраняет заливку (POST multipart PNG), затем линии (PUT JSON).
+ * Заливка идёт первой: не блокируется тяжёлым JSON линий; при ошибке линий PNG уже на сервере.
+ * Линии не блокируют заливку при сбое PUT (раньше return после линий глушил POST заливки).
  *
  * @param {{ keepalive?: boolean }} [options]
  * @returns {Promise<void>}
  */
 async function persistMapCanvas(options = {}) {
-    const url = mapState.mapsCanvasSaveUrl;
-    if (!url) {
-        return;
-    }
-    const group = mapState.landscapeDrawGroup;
     const canvas = mapState.fillCanvas;
-    if (!group || !canvas) {
+    const group = mapState.landscapeDrawGroup;
+    const linesUrl = mapState.mapsCanvasSaveUrl;
+    const fillUploadUrl = mapState.mapsFillUploadUrl;
+
+    if (!canvas) {
+        mapFillDebugLog('persistMapCanvas abort: no fill canvas');
+
         return;
     }
+
+    const shouldSaveLines = !!(linesUrl && group);
+    const wantFill = !!(fillUploadUrl && mapState.fillNeedsSync);
+
+    mapFillDebugLog('persistMapCanvas', {
+        shouldSaveLines,
+        wantFill,
+        keepalive: options.keepalive === true,
+    });
+
+    if (!shouldSaveLines && !wantFill) {
+        mapFillDebugLog('persistMapCanvas no-op');
+
+        return;
+    }
+
+    if (wantFill && fillUploadUrl) {
+        const ok = await persistMapFillLayerOnly();
+        mapFillDebugLog('persistMapCanvas after persistMapFillLayerOnly', { ok });
+    }
+
+    if (!shouldSaveLines) {
+        return;
+    }
+
     const lines = [];
     group.getChildren().forEach((node) => {
         if (node.getClassName() !== 'Line') {
             return;
         }
+        const pts = sanitizeLinePointsForJson(node.points().slice());
+        if (pts.length < 4) {
+            return;
+        }
         const dash = node.dash();
+        const strokeRaw = node.stroke();
+        const stroke =
+            typeof strokeRaw === 'string' && strokeRaw.trim() !== ''
+                ? strokeRaw
+                : mapLineStrokeCss('black');
         lines.push({
-            points: node.points().slice(),
-            stroke: node.stroke(),
+            points: pts,
+            stroke,
             strokeWidth: clampMapLineWidth(node.strokeWidth()),
-            dash: dash && dash.length ? dash.slice() : null,
+            dash: dash && dash.length ? dash.map((x) => (Number.isFinite(Number(x)) ? Number(x) : 0)) : null,
         });
     });
-    /** @type {{ lines: typeof lines, fill_png_base64?: string | null }} */
     const payload = { lines };
-    let hasPaint = false;
-    let fillReadFailed = false;
-    const ctx = canvas.getContext('2d');
-    if (ctx) {
-        try {
-            const imgData = ctx.getImageData(0, 0, MAP_W, MAP_H);
-            const d = imgData.data;
-            for (let i = 3; i < d.length; i += 4) {
-                if (d[i] !== 0) {
-                    hasPaint = true;
-                    break;
-                }
-            }
-        } catch {
-            fillReadFailed = true;
-            hasPaint = false;
-        }
-    }
-    /**
-     * PNG слоя заливки для отправки на сервер (без префикса data URL).
-     *
-     * @returns {string | null}
-     */
-    const encodeFillCanvasPngBase64 = () => {
-        const dataUrl = canvas.toDataURL('image/png');
-        const comma = dataUrl.indexOf(',');
-        if (comma < 0) {
-            return null;
-        }
-        const b64 = dataUrl.slice(comma + 1);
-
-        return b64.length > 0 ? b64 : null;
-    };
-    // Слой заливки меняли локально — всегда шлём растр через toDataURL, без ветки null: иначе при ошибочном
-    // hasPaint (например сбой чтения пикселей) уходил fill_png_base64: null и файл заливки на сервере удалялся.
-    // Кодирование не зависит от getImageData: при сбое чтения пикселей toDataURL всё ещё может сработать.
-    if (mapState.fillNeedsSync && ctx) {
-        try {
-            const b64 = encodeFillCanvasPngBase64();
-            if (b64 !== null) {
-                payload.fill_png_base64 = b64;
-            }
-        } catch {
-            // tainted canvas или иной сбой toDataURL
-        }
-    } else if (hasPaint && !fillReadFailed && ctx) {
-        try {
-            const b64 = encodeFillCanvasPngBase64();
-            if (b64 !== null) {
-                payload.fill_png_base64 = b64;
-            }
-        } catch {
-            //
-        }
-    }
-    const sentFillUpdate = Object.prototype.hasOwnProperty.call(payload, 'fill_png_base64');
     const body = JSON.stringify(payload);
-    // fetch(..., { keepalive: true }) ограничивает тело ~64 KiB (спека Fetch) — PNG заливки на порядки больше.
     const useKeepalive =
         options.keepalive === true && new TextEncoder().encode(body).length <= 65536;
     try {
-        const res = await fetch(url, {
+        const res = await fetch(linesUrl, {
             method: 'PUT',
             headers: {
                 'Content-Type': 'application/json',
@@ -762,11 +1054,18 @@ async function persistMapCanvas(options = {}) {
             credentials: 'same-origin',
             keepalive: useKeepalive,
         });
-        if (res.ok && sentFillUpdate) {
-            mapState.fillNeedsSync = false;
+        if (!res.ok) {
+            const detail = await res.text().catch(() => '');
+            showMapPersistError(
+                `Линии карты не сохранены (${res.status}).`,
+                detail.slice(0, 800),
+            );
         }
-    } catch {
-        // сеть или уход со страницы
+    } catch (err) {
+        showMapPersistError(
+            'Не удалось сохранить линии карты (сеть или уход со страницы).',
+            err instanceof Error ? err.message : String(err),
+        );
     }
 }
 
@@ -776,7 +1075,7 @@ async function persistMapCanvas(options = {}) {
  * @returns {void}
  */
 function schedulePersistMapCanvas() {
-    if (!mapState.mapsCanvasSaveUrl) {
+    if (!mapState.mapsCanvasSaveUrl && !mapState.mapsFillUploadUrl) {
         return;
     }
     if (mapCanvasPersistTimer !== null) {
@@ -785,19 +1084,18 @@ function schedulePersistMapCanvas() {
     mapCanvasPersistTimer = window.setTimeout(() => {
         mapCanvasPersistTimer = null;
         void persistMapCanvas();
-    }, 800);
+    }, 400);
 }
 
 /**
  * Немедленное сохранение (например при pagehide).
  *
- * Без keepalive: PNG заливки в base64 всегда больше лимита ~64 KiB у fetch(keepalive), иначе запрос падает
- * и при быстрой перезагрузке заливка не успевает сохраниться.
+ * Тело PUT — только JSON линий; заливка идёт отдельным POST (multipart), без keepalive для большого PNG.
  *
  * @returns {void}
  */
 function flushMapCanvasPersist() {
-    if (!mapState.mapsCanvasSaveUrl) {
+    if (!mapState.mapsCanvasSaveUrl && !mapState.mapsFillUploadUrl) {
         return;
     }
     if (mapCanvasPersistTimer !== null) {
@@ -868,14 +1166,14 @@ function imageDataToEmptyMask(img) {
  */
 function rasterizeLandscapeStrokesToMask(landscapeDrawGroup) {
     const c = document.createElement('canvas');
-    c.width = MAP_W;
-    c.height = MAP_H;
+    c.width = mapState.mapWidthPx;
+    c.height = mapState.mapHeightPx;
     const ctx = c.getContext('2d');
     if (!ctx) {
         return null;
     }
     ctx.fillStyle = '#ffffff';
-    ctx.fillRect(0, 0, MAP_W, MAP_H);
+    ctx.fillRect(0, 0, mapState.mapWidthPx, mapState.mapHeightPx);
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
     landscapeDrawGroup.getChildren().forEach((node) => {
@@ -912,9 +1210,9 @@ function rasterizeLandscapeStrokesToMask(landscapeDrawGroup) {
     ctx.lineCap = 'butt';
     ctx.lineJoin = 'miter';
     ctx.setLineDash([]);
-    ctx.strokeRect(0, 0, MAP_W, MAP_H);
+    ctx.strokeRect(0, 0, mapState.mapWidthPx, mapState.mapHeightPx);
 
-    return ctx.getImageData(0, 0, MAP_W, MAP_H);
+    return ctx.getImageData(0, 0, mapState.mapWidthPx, mapState.mapHeightPx);
 }
 
 /**
@@ -940,6 +1238,174 @@ function fillRgbaFromKey(key) {
     }
 
     return { r: parts[0] | 0, g: parts[1] | 0, b: parts[2] | 0, a: 255 };
+}
+
+/**
+ * Светлее базового цвета воды — «пена» у кромки залитой области.
+ *
+ * @param {{ r: number, g: number, b: number, a: number }} base
+ * @returns {{ r: number, g: number, b: number, a: number }}
+ */
+function waterFoamRgbaFromBase(base) {
+    const lift = 0.5;
+    const aBoost = 14;
+
+    return {
+        r: Math.min(255, Math.round(base.r + (255 - base.r) * lift)),
+        g: Math.min(255, Math.round(base.g + (255 - base.g) * lift)),
+        b: Math.min(255, Math.round(base.b + (255 - base.b) * lift)),
+        a: Math.min(255, Math.round(base.a + aBoost)),
+    };
+}
+
+/**
+ * Линейное смешивание двух RGBA (каналы 0…255).
+ *
+ * @param {{ r: number, g: number, b: number, a: number }} a
+ * @param {{ r: number, g: number, b: number, a: number }} b
+ * @param {number} t доля второго цвета 0…1
+ * @returns {{ r: number, g: number, b: number, a: number }}
+ */
+function blendRgbaComponents(a, b, t) {
+    const u = Math.max(0, Math.min(1, t));
+
+    return {
+        r: Math.round(a.r * (1 - u) + b.r * u),
+        g: Math.round(a.g * (1 - u) + b.g * u),
+        b: Math.round(a.b * (1 - u) + b.b * u),
+        a: Math.round(a.a * (1 - u) + b.a * u),
+    };
+}
+
+/**
+ * Отмечает пиксели залитого компонента, граничащие с не-заливкой (берег).
+ *
+ * @param {number} W
+ * @param {number} H
+ * @param {Uint8Array} visited маска текущей заливки (1 = эта порция)
+ * @returns {Uint8Array} coast[i]=1 у кромки
+ */
+function markWaterCoastFromVisited(W, H, visited) {
+    const coast = new Uint8Array(W * H);
+    const inVisited = (nx, ny) => {
+        if (nx < 0 || nx >= W || ny < 0 || ny >= H) {
+            return false;
+        }
+
+        return visited[ny * W + nx] === 1;
+    };
+    for (let y = 0; y < H; y++) {
+        for (let x = 0; x < W; x++) {
+            const i = y * W + x;
+            if (!visited[i]) {
+                continue;
+            }
+            if (
+                !inVisited(x - 1, y) ||
+                !inVisited(x + 1, y) ||
+                !inVisited(x, y - 1) ||
+                !inVisited(x, y + 1)
+            ) {
+                coast[i] = 1;
+            }
+        }
+    }
+
+    return coast;
+}
+
+/**
+ * Расстояние от кромки вглубь залитой области (4-соседи): BFS от всех «береговых» пикселей.
+ * Учитываются только слои 0…maxDepth−1; дальше dist = −1 (базовый цвет заливки без изменений).
+ *
+ * @param {number} W
+ * @param {number} H
+ * @param {Uint8Array} visited
+ * @param {Uint8Array} coast
+ * @param {number} maxDepth число слоёв (например 6 → расстояния 0…5)
+ * @returns {Int16Array} dist[i] ≥ 0 внутри полосы, иначе −1
+ */
+function waterInwardDistanceFromCoast(W, H, visited, coast, maxDepth) {
+    const dist = new Int16Array(W * H);
+    for (let i = 0; i < W * H; i++) {
+        dist[i] = -1;
+    }
+    /** @type {number[]} */
+    const q = [];
+    for (let i = 0; i < W * H; i++) {
+        if (visited[i] && coast[i]) {
+            dist[i] = 0;
+            q.push(i);
+        }
+    }
+    for (let qh = 0; qh < q.length; qh++) {
+        const i = q[qh];
+        const d0 = dist[i];
+        if (d0 >= maxDepth - 1) {
+            continue;
+        }
+        const nd = d0 + 1;
+        if (nd >= maxDepth) {
+            continue;
+        }
+        const x = i % W;
+        const y = (i / W) | 0;
+        const relax = (j) => {
+            if (!visited[j] || dist[j] !== -1) {
+                return;
+            }
+            dist[j] = nd;
+            q.push(j);
+        };
+        if (x > 0) {
+            relax(i - 1);
+        }
+        if (x < W - 1) {
+            relax(i + 1);
+        }
+        if (y > 0) {
+            relax(i - W);
+        }
+        if (y < H - 1) {
+            relax(i + W);
+        }
+    }
+
+    return dist;
+}
+
+/**
+ * Вдоль границы заливки «Вода»: полоса до {@link WATER_FOAM_BAND_DEPTH_PX} пикселей от берега,
+ * градиент от светлой пены к основному цвету воды.
+ *
+ * @param {ImageData} imageData
+ * @param {number} W
+ * @param {number} H
+ * @param {Uint8Array} visited
+ * @param {{ r: number, g: number, b: number, a: number }} baseRgba
+ * @returns {void}
+ */
+function applyWaterFoamAlongFilledRegion(imageData, W, H, visited, baseRgba) {
+    const coast = markWaterCoastFromVisited(W, H, visited);
+    const foam = waterFoamRgbaFromBase(baseRgba);
+    const depth = Math.max(1, Math.min(64, WATER_FOAM_BAND_DEPTH_PX));
+    const distMap = waterInwardDistanceFromCoast(W, H, visited, coast, depth);
+    const px = imageData.data;
+    const denom = depth <= 1 ? 1 : depth - 1;
+
+    for (let i = 0; i < W * H; i++) {
+        const di = distMap[i];
+        if (di < 0) {
+            continue;
+        }
+        const u = depth <= 1 ? 0 : di / denom;
+        const c = blendRgbaComponents(foam, baseRgba, u);
+        const o = i * 4;
+        px[o] = c.r;
+        px[o + 1] = c.g;
+        px[o + 2] = c.b;
+        px[o + 3] = c.a;
+    }
 }
 
 /**
@@ -1121,8 +1587,8 @@ function loadImage(url) {
 function spriteDragBounds(labelReserve) {
     const minX = 0;
     const minY = 0;
-    const maxX = MAP_W - PLACE_SIZE;
-    const maxY = MAP_H - PLACE_SIZE - labelReserve;
+    const maxX = mapState.mapWidthPx - PLACE_SIZE;
+    const maxY = mapState.mapHeightPx - PLACE_SIZE - labelReserve;
 
     return { minX, minY, maxX, maxY };
 }
@@ -1498,7 +1964,7 @@ async function placeSpriteAt(worldX, worldY) {
     if (!path || !url || !wg || !layer) {
         return;
     }
-    if (worldX < 0 || worldX > MAP_W || worldY < 0 || worldY > MAP_H) {
+    if (worldX < 0 || worldX > mapState.mapWidthPx || worldY < 0 || worldY > mapState.mapHeightPx) {
         return;
     }
     const half = PLACE_SIZE / 2;
@@ -1522,11 +1988,14 @@ async function placeSpriteAt(worldX, worldY) {
 
 /**
  * @param {HTMLElement} container
- * @param {{ mapDrawingLines?: Array<{ points: number[], stroke: string, dash: number[] | null }>, mapFillUrl?: string | null, mapsCanvasSaveUrl?: string | null }} [canvasOpts]
+ * @param {{ mapDrawingLines?: Array<{ points: number[], stroke: string, dash: number[] | null }>, mapFillUrl?: string | null, mapsCanvasSaveUrl?: string | null, mapsFillUploadUrl?: string | null, mapWidth?: number, mapHeight?: number }} [canvasOpts]
  */
 function initKonva(container, canvasOpts = {}) {
     mapState.container = container;
     mapState.mapsCanvasSaveUrl = canvasOpts.mapsCanvasSaveUrl || null;
+    mapState.mapsFillUploadUrl = canvasOpts.mapsFillUploadUrl || null;
+    mapState.mapWidthPx = clampMapSide(canvasOpts.mapWidth);
+    mapState.mapHeightPx = clampMapSide(canvasOpts.mapHeight);
 
     const stage = new Konva.Stage({
         container,
@@ -1542,8 +2011,8 @@ function initKonva(container, canvasOpts = {}) {
     const bg = new Konva.Rect({
         x: 0,
         y: 0,
-        width: MAP_W,
-        height: MAP_H,
+        width: mapState.mapWidthPx,
+        height: mapState.mapHeightPx,
         fill: '#d8d6cf',
         stroke: '#7a786f',
         strokeWidth: 2,
@@ -1554,14 +2023,14 @@ function initKonva(container, canvasOpts = {}) {
 
     const landscapeFillGroup = new Konva.Group({ name: 'map-landscape-fill', listening: false });
     const fillCanvasEl = document.createElement('canvas');
-    fillCanvasEl.width = MAP_W;
-    fillCanvasEl.height = MAP_H;
+    fillCanvasEl.width = mapState.mapWidthPx;
+    fillCanvasEl.height = mapState.mapHeightPx;
     const fillImageNode = new Konva.Image({
         image: fillCanvasEl,
         x: 0,
         y: 0,
-        width: MAP_W,
-        height: MAP_H,
+        width: mapState.mapWidthPx,
+        height: mapState.mapHeightPx,
         listening: false,
         name: 'map-fill-image',
     });
@@ -1572,10 +2041,10 @@ function initKonva(container, canvasOpts = {}) {
 
     const gridGroup = new Konva.Group({ listening: false, name: 'map-grid' });
     const gridStroke = 'rgba(168, 166, 160, 0.28)';
-    for (let gx = 0; gx <= MAP_W; gx += GRID_STEP) {
+    for (let gx = 0; gx <= mapState.mapWidthPx; gx += GRID_STEP) {
         gridGroup.add(
             new Konva.Line({
-                points: [gx, 0, gx, MAP_H],
+                points: [gx, 0, gx, mapState.mapHeightPx],
                 stroke: gridStroke,
                 strokeWidth: 1,
                 listening: false,
@@ -1583,10 +2052,10 @@ function initKonva(container, canvasOpts = {}) {
             }),
         );
     }
-    for (let gy = 0; gy <= MAP_H; gy += GRID_STEP) {
+    for (let gy = 0; gy <= mapState.mapHeightPx; gy += GRID_STEP) {
         gridGroup.add(
             new Konva.Line({
-                points: [0, gy, MAP_W, gy],
+                points: [0, gy, mapState.mapWidthPx, gy],
                 stroke: gridStroke,
                 strokeWidth: 1,
                 listening: false,
@@ -1599,8 +2068,8 @@ function initKonva(container, canvasOpts = {}) {
     const mapCanvasEdgeRect = new Konva.Rect({
         x: 0,
         y: 0,
-        width: MAP_W,
-        height: MAP_H,
+        width: mapState.mapWidthPx,
+        height: mapState.mapHeightPx,
         fillEnabled: false,
         stroke: MAP_CANVAS_EDGE_STROKE,
         strokeWidth: MAP_CANVAS_EDGE_STROKE_WIDTH,
@@ -1618,6 +2087,19 @@ function initKonva(container, canvasOpts = {}) {
     const mapUndoStack = [];
 
     /**
+     * Включает или отключает кнопку «Отменить» в шапке по длине стека отмены.
+     *
+     * @returns {void}
+     */
+    function syncMapUndoUi() {
+        const btn = document.getElementById('map-undo-last-action');
+        if (!btn) {
+            return;
+        }
+        btn.disabled = mapUndoStack.length === 0;
+    }
+
+    /**
      * Добавляет запись в стек отмены (не больше MAP_UNDO_STACK_MAX последних).
      *
      * @param {{ type: 'stroke', line: import('konva/lib/shapes/Line').default } | { type: 'fill', imageData: ImageData }} entry
@@ -1628,6 +2110,7 @@ function initKonva(container, canvasOpts = {}) {
         while (mapUndoStack.length > MAP_UNDO_STACK_MAX) {
             mapUndoStack.shift();
         }
+        syncMapUndoUi();
     }
 
     /**
@@ -1636,35 +2119,42 @@ function initKonva(container, canvasOpts = {}) {
      * @returns {void}
      */
     function undoLastMapAction() {
-        while (mapUndoStack.length > 0) {
-            const entry = mapUndoStack.pop();
-            if (!entry) {
-                return;
-            }
-            if (entry.type === 'stroke') {
-                if (entry.line.getParent()) {
-                    entry.line.destroy();
-                    batchDrawMapLayers();
-                    schedulePersistMapCanvas();
-                    pruneStaleUndoStrokes();
+        try {
+            while (mapUndoStack.length > 0) {
+                const entry = mapUndoStack.pop();
+                if (!entry) {
+                    return;
+                }
+                if (entry.type === 'stroke') {
+                    if (entry.line.getParent()) {
+                        entry.line.destroy();
+                        batchDrawMapLayers();
+                        schedulePersistMapCanvas();
+                        pruneStaleUndoStrokes();
+
+                        return;
+                    }
+
+                    continue;
+                }
+                if (entry.type === 'fill') {
+                    const fctx = mapState.fillCanvas?.getContext('2d');
+                    if (fctx && mapState.fillCanvas) {
+                        fctx.putImageData(entry.imageData, 0, 0);
+                        fillImageNode.image(mapState.fillCanvas);
+                        mapState.fillNeedsSync = true;
+                        batchDrawMapLayers();
+                    }
+                    mapFillDebugLog('undoLastMapAction fill branch, calling persistMapFillLayerOnly');
+                    void persistMapFillLayerOnly().then((ok) => {
+                        mapFillDebugLog('undoLastMapAction persistMapFillLayerOnly done', { ok });
+                    });
 
                     return;
                 }
-
-                continue;
             }
-            if (entry.type === 'fill') {
-                const fctx = mapState.fillCanvas?.getContext('2d');
-                if (fctx && mapState.fillCanvas) {
-                    fctx.putImageData(entry.imageData, 0, 0);
-                    fillImageNode.image(mapState.fillCanvas);
-                    mapState.fillNeedsSync = true;
-                    batchDrawMapLayers();
-                }
-                schedulePersistMapCanvas();
-
-                return;
-            }
+        } finally {
+            syncMapUndoUi();
         }
     }
 
@@ -1687,6 +2177,7 @@ function initKonva(container, canvasOpts = {}) {
         for (let k = 0; k < kept.length; k++) {
             mapUndoStack.push(kept[k]);
         }
+        syncMapUndoUi();
     }
 
     mapState.pruneStaleUndoStrokes = pruneStaleUndoStrokes;
@@ -1706,7 +2197,7 @@ function initKonva(container, canvasOpts = {}) {
             return null;
         }
         const pos = worldGroup.getRelativePointerPosition();
-        if (!pos || pos.x < 0 || pos.x > MAP_W || pos.y < 0 || pos.y > MAP_H) {
+        if (!pos || pos.x < 0 || pos.x > mapState.mapWidthPx || pos.y < 0 || pos.y > mapState.mapHeightPx) {
             return null;
         }
 
@@ -1716,15 +2207,16 @@ function initKonva(container, canvasOpts = {}) {
     /**
      * Заливка по клику: связная компонента «пустых» клеток от точки клика (4-связность), без выхода за холст.
      * Стены — штрихи ландшафта/границ и чёрная рамка листа (как в маске rasterizeLandscapeStrokesToMask).
+     * После заливки сразу отправляет PNG на сервер (await).
      *
      * @param {number} worldX
      * @param {number} worldY
-     * @returns {void}
+     * @returns {Promise<void>}
      */
-    function runMapFillAt(worldX, worldY) {
+    async function runMapFillAt(worldX, worldY) {
         const ix = Math.floor(worldX);
         const iy = Math.floor(worldY);
-        if (ix < 0 || ix >= MAP_W || iy < 0 || iy >= MAP_H) {
+        if (ix < 0 || ix >= mapState.mapWidthPx || iy < 0 || iy >= mapState.mapHeightPx) {
             return;
         }
         const maskImg = rasterizeLandscapeStrokesToMask(landscapeDrawGroup);
@@ -1732,8 +2224,8 @@ function initKonva(container, canvasOpts = {}) {
             return;
         }
         const maskEmpty = imageDataToEmptyMask(maskImg);
-        const W = MAP_W;
-        const H = MAP_H;
+        const W = mapState.mapWidthPx;
+        const H = mapState.mapHeightPx;
         const idx = iy * W + ix;
         if (maskEmpty[idx] === 0) {
             mapState.flashPlacementHint?.('Клик по линии. Выберите область рядом со штрихом.');
@@ -1784,24 +2276,35 @@ function initKonva(container, canvasOpts = {}) {
                 queue[tail++] = ni;
             }
         }
+        if (mapState.fillColorKey === MAP_WATER_FILL_KEY && mapState.waterEdgeDecorate) {
+            applyWaterFoamAlongFilledRegion(fillData, W, H, visited, rgba);
+        }
         fctx.putImageData(fillData, 0, 0);
         fillImageNode.image(fillCanvas);
         mapState.fillNeedsSync = true;
         batchDrawMapLayers();
-        schedulePersistMapCanvas();
+        mapFillDebugLog('runMapFillAt local flood done', {
+            worldX,
+            worldY,
+            filledCells: tail,
+            colorKey: mapState.fillColorKey,
+        });
+        const ok = await persistMapFillLayerOnly();
+        mapFillDebugLog('runMapFillAt after persistMapFillLayerOnly', { ok });
     }
 
     /**
      * Снимает заливку в той же связной области, что и заливка ЛКМ (маска линий и рамки листа).
+     * После снятия сразу сохраняет PNG на сервер (await).
      *
      * @param {number} worldX
      * @param {number} worldY
-     * @returns {void}
+     * @returns {Promise<void>}
      */
-    function runMapFillEraseAt(worldX, worldY) {
+    async function runMapFillEraseAt(worldX, worldY) {
         const ix = Math.floor(worldX);
         const iy = Math.floor(worldY);
-        if (ix < 0 || ix >= MAP_W || iy < 0 || iy >= MAP_H) {
+        if (ix < 0 || ix >= mapState.mapWidthPx || iy < 0 || iy >= mapState.mapHeightPx) {
             return;
         }
         const maskImg = rasterizeLandscapeStrokesToMask(landscapeDrawGroup);
@@ -1809,8 +2312,8 @@ function initKonva(container, canvasOpts = {}) {
             return;
         }
         const maskEmpty = imageDataToEmptyMask(maskImg);
-        const W = MAP_W;
-        const H = MAP_H;
+        const W = mapState.mapWidthPx;
+        const H = mapState.mapHeightPx;
         const idx = iy * W + ix;
         if (maskEmpty[idx] === 0) {
             mapState.flashPlacementHint?.('Клик по линии. Выберите область рядом со штрихом.');
@@ -1864,20 +2367,22 @@ function initKonva(container, canvasOpts = {}) {
         fillImageNode.image(fillCanvas);
         mapState.fillNeedsSync = true;
         batchDrawMapLayers();
-        schedulePersistMapCanvas();
+        mapFillDebugLog('runMapFillEraseAt local done', { worldX, worldY, erasedCells: tail });
+        const ok = await persistMapFillLayerOnly();
+        mapFillDebugLog('runMapFillEraseAt after persistMapFillLayerOnly', { ok });
     }
 
     const crosshairGroup = new Konva.Group({ listening: false, name: 'map-crosshair' });
     const guideStroke = 'rgba(120, 118, 110, 0.22)';
     const crosshairV = new Konva.Line({
-        points: [0, 0, 0, MAP_H],
+        points: [0, 0, 0, mapState.mapHeightPx],
         stroke: guideStroke,
         strokeWidth: 1,
         listening: false,
         visible: false,
     });
     const crosshairH = new Konva.Line({
-        points: [0, 0, MAP_W, 0],
+        points: [0, 0, mapState.mapWidthPx, 0],
         stroke: guideStroke,
         strokeWidth: 1,
         listening: false,
@@ -1976,7 +2481,7 @@ function initKonva(container, canvasOpts = {}) {
             }),
         );
 
-        for (let wwx = 0; wwx <= MAP_W; wwx += 100) {
+        for (let wwx = 0; wwx <= mapState.mapWidthPx; wwx += 100) {
             const sx = ox + wwx;
             if (sx < RULER_W || sx > sw) {
                 continue;
@@ -2006,7 +2511,7 @@ function initKonva(container, canvasOpts = {}) {
             }
         }
 
-        for (let wwy = 0; wwy <= MAP_H; wwy += 100) {
+        for (let wwy = 0; wwy <= mapState.mapHeightPx; wwy += 100) {
             const sy = oy + wwy;
             if (sy < RULER_H || sy > sh) {
                 continue;
@@ -2050,15 +2555,15 @@ function initKonva(container, canvasOpts = {}) {
         const sh = stage.height();
         let x = worldGroup.x();
         let y = worldGroup.y();
-        if (MAP_W >= sw) {
-            x = Math.min(0, Math.max(sw - MAP_W, x));
+        if (mapState.mapWidthPx >= sw) {
+            x = Math.min(0, Math.max(sw - mapState.mapWidthPx, x));
         } else {
-            x = (sw - MAP_W) / 2;
+            x = (sw - mapState.mapWidthPx) / 2;
         }
-        if (MAP_H >= sh) {
-            y = Math.min(0, Math.max(sh - MAP_H, y));
+        if (mapState.mapHeightPx >= sh) {
+            y = Math.min(0, Math.max(sh - mapState.mapHeightPx, y));
         } else {
-            y = (sh - MAP_H) / 2;
+            y = (sh - mapState.mapHeightPx) / 2;
         }
         worldGroup.position({ x, y });
         drawFixedRulers();
@@ -2070,8 +2575,8 @@ function initKonva(container, canvasOpts = {}) {
         const sw = stage.width();
         const sh = stage.height();
         worldGroup.position({
-            x: (sw - MAP_W) / 2,
-            y: (sh - MAP_H) / 2,
+            x: (sw - mapState.mapWidthPx) / 2,
+            y: (sh - mapState.mapHeightPx) / 2,
         });
         clampWorldGroupPosition();
     }
@@ -2163,9 +2668,9 @@ function initKonva(container, canvasOpts = {}) {
         if (
             !rel ||
             rel.x < 0 ||
-            rel.x > MAP_W ||
+            rel.x > mapState.mapWidthPx ||
             rel.y < 0 ||
-            rel.y > MAP_H ||
+            rel.y > mapState.mapHeightPx ||
             pos.x < 0 ||
             pos.x > stage.width() ||
             pos.y < 0 ||
@@ -2186,8 +2691,8 @@ function initKonva(container, canvasOpts = {}) {
 
             return;
         }
-        v.points([wx, 0, wx, MAP_H]);
-        h.points([0, wy, MAP_W, wy]);
+        v.points([wx, 0, wx, mapState.mapHeightPx]);
+        h.points([0, wy, mapState.mapWidthPx, wy]);
         v.visible(true);
         h.visible(true);
     }
@@ -2270,7 +2775,7 @@ function initKonva(container, canvasOpts = {}) {
                 return;
             }
             const rel = worldGroup.getRelativePointerPosition();
-            if (!rel || rel.x < 0 || rel.x > MAP_W || rel.y < 0 || rel.y > MAP_H) {
+            if (!rel || rel.x < 0 || rel.x > mapState.mapWidthPx || rel.y < 0 || rel.y > mapState.mapHeightPx) {
                 return;
             }
             isLandscapeDrawing = true;
@@ -2307,9 +2812,9 @@ function initKonva(container, canvasOpts = {}) {
             if (
                 !relErase ||
                 relErase.x < 0 ||
-                relErase.x > MAP_W ||
+                relErase.x > mapState.mapWidthPx ||
                 relErase.y < 0 ||
-                relErase.y > MAP_H
+                relErase.y > mapState.mapHeightPx
             ) {
                 return;
             }
@@ -2365,7 +2870,7 @@ function initKonva(container, canvasOpts = {}) {
             (mapState.drawMode === 'landscape' || mapState.drawMode === 'borders')
         ) {
             const rel = worldGroup.getRelativePointerPosition();
-            if (rel && rel.x >= 0 && rel.x <= MAP_W && rel.y >= 0 && rel.y <= MAP_H) {
+            if (rel && rel.x >= 0 && rel.x <= mapState.mapWidthPx && rel.y >= 0 && rel.y <= mapState.mapHeightPx) {
                 const pts = currentLandscapeLine.points().slice();
                 const lastX = pts.length >= 2 ? pts[pts.length - 2] : null;
                 const lastY = pts.length >= 2 ? pts[pts.length - 1] : null;
@@ -2382,7 +2887,7 @@ function initKonva(container, canvasOpts = {}) {
         }
         if (isErasing && mapState.drawMode === 'erase') {
             const relErase = worldGroup.getRelativePointerPosition();
-            if (relErase && relErase.x >= 0 && relErase.x <= MAP_W && relErase.y >= 0 && relErase.y <= MAP_H) {
+            if (relErase && relErase.x >= 0 && relErase.x <= mapState.mapWidthPx && relErase.y >= 0 && relErase.y <= mapState.mapHeightPx) {
                 const er = clampEraseRadius(mapState.eraseRadius);
                 eraseFillDiskAt(relErase.x, relErase.y, er);
                 eraseLinesNearWorld(relErase.x, relErase.y, er);
@@ -2428,7 +2933,9 @@ function initKonva(container, canvasOpts = {}) {
             if (!pos) {
                 return;
             }
-            runMapFillEraseAt(pos.x, pos.y);
+            void (async () => {
+                await runMapFillEraseAt(pos.x, pos.y);
+            })();
 
             return;
         }
@@ -2463,7 +2970,7 @@ function initKonva(container, canvasOpts = {}) {
         }
     });
 
-    stage.on('click', (e) => {
+    stage.on('click', async (e) => {
         const clickBtn = typeof e.evt.button === 'number' ? e.evt.button : 0;
         if (clickBtn !== 0) {
             return;
@@ -2495,7 +3002,7 @@ function initKonva(container, canvasOpts = {}) {
             if (!pos) {
                 return;
             }
-            runMapFillAt(pos.x, pos.y);
+            await runMapFillAt(pos.x, pos.y);
 
             return;
         }
@@ -2525,7 +3032,7 @@ function initKonva(container, canvasOpts = {}) {
         if (!pos) {
             return;
         }
-        if (pos.x < 0 || pos.x > MAP_W || pos.y < 0 || pos.y > MAP_H) {
+        if (pos.x < 0 || pos.x > mapState.mapWidthPx || pos.y < 0 || pos.y > mapState.mapHeightPx) {
             return;
         }
         placeSpriteAt(pos.x, pos.y);
@@ -2569,6 +3076,12 @@ function initKonva(container, canvasOpts = {}) {
         undoLastMapAction();
     }
     document.addEventListener('keydown', onMapUndoKeydown);
+
+    const mapUndoBtn = document.getElementById('map-undo-last-action');
+    mapUndoBtn?.addEventListener('click', () => {
+        undoLastMapAction();
+    });
+    syncMapUndoUi();
 
     /**
      * Восстанавливает сохранённые линии и слой заливки до загрузки спрайтов.
@@ -2622,20 +3135,38 @@ function initKonva(container, canvasOpts = {}) {
             }
         }
         const fillUrl = canvasOpts.mapFillUrl;
+        mapFillDebugLog('restoreMapCanvasState fillUrl', {
+            fillUrl: typeof fillUrl === 'string' ? fillUrl.slice(0, 120) : fillUrl,
+            fillNeedsSyncBeforeLoad: mapState.fillNeedsSync,
+        });
         if (typeof fillUrl === 'string' && fillUrl !== '' && mapState.fillCanvas && mapState.fillImageNode) {
             try {
                 const img = await loadImage(fillUrl);
                 const ctx = mapState.fillCanvas.getContext('2d');
-                if (ctx) {
-                    ctx.clearRect(0, 0, MAP_W, MAP_H);
-                    ctx.drawImage(img, 0, 0, MAP_W, MAP_H);
+                // Пока шёл await, пользователь мог уже залить область — не перезатирать локальный слой
+                // и не сбрасывать fillNeedsSync (иначе отложенный POST заливки не уйдёт).
+                if (ctx && !mapState.fillNeedsSync) {
+                    ctx.clearRect(0, 0, mapState.mapWidthPx, mapState.mapHeightPx);
+                    ctx.drawImage(img, 0, 0, mapState.mapWidthPx, mapState.mapHeightPx);
                     mapState.fillImageNode.image(mapState.fillCanvas);
+                    mapFillDebugLog('restoreMapCanvasState fill image drawn from server', {
+                        imgNaturalW: img.naturalWidth,
+                        imgNaturalH: img.naturalHeight,
+                    });
+                } else {
+                    mapFillDebugLog('restoreMapCanvasState fill draw skipped', {
+                        hasCtx: !!ctx,
+                        fillNeedsSync: mapState.fillNeedsSync,
+                    });
                 }
-            } catch {
-                // битая ссылка или CORS
+            } catch (err) {
+                mapFillDebugLog('restoreMapCanvasState loadImage(fill) failed', err, fillUrl?.slice(0, 200));
             }
+        } else {
+            mapFillDebugLog('restoreMapCanvasState no fill URL or no canvas', {
+                hasUrl: !!(typeof fillUrl === 'string' && fillUrl !== ''),
+            });
         }
-        mapState.fillNeedsSync = false;
         mapUndoStack.length = 0;
         batchDrawMapLayers();
     }
@@ -2687,9 +3218,16 @@ function initKonva(container, canvasOpts = {}) {
 }
 
 /**
- * @param {{ spriteBaseUrl: string, mapSprites?: Array<{ id: number, sprite_path: string, pos_x: number, pos_y: number }>, mapsSpriteStoreUrl?: string, mapsSpriteUpdateUrlPattern?: string, mapsCanvasSaveUrl?: string | null, mapDrawingLines?: Array<{ points: number[], stroke: string, dash: number[] | null }>, mapFillUrl?: string | null, worldSetting?: string, mapObjectLabelFontFamily?: string }} opts
+ * @param {{ spriteBaseUrl: string, mapSprites?: Array<{ id: number, sprite_path: string, pos_x: number, pos_y: number }>, mapsSpriteStoreUrl?: string, mapsSpriteUpdateUrlPattern?: string, mapsCanvasSaveUrl?: string | null, mapsFillUploadUrl?: string | null, mapDrawingLines?: Array<{ points: number[], stroke: string, dash: number[] | null }>, mapFillUrl?: string | null, mapWidth?: number, mapHeight?: number, worldSetting?: string, mapObjectLabelFontFamily?: string }} opts
  */
 export function initMapsPage(opts) {
+    mapFillDebugLog('initMapsPage', {
+        mapsFillUploadUrl: opts.mapsFillUploadUrl || null,
+        mapsCanvasSaveUrl: opts.mapsCanvasSaveUrl || null,
+        mapFillUrl: opts.mapFillUrl ? String(opts.mapFillUrl).slice(0, 160) : null,
+        mapWidth: opts.mapWidth,
+        mapHeight: opts.mapHeight,
+    });
     mapState.spriteBase = opts.spriteBaseUrl || '/sprites';
     mapState.initialPlacements = opts.mapSprites ?? [];
     mapState.storeUrl = opts.mapsSpriteStoreUrl ?? '';
@@ -2709,9 +3247,15 @@ export function initMapsPage(opts) {
         mapDrawingLines: opts.mapDrawingLines ?? [],
         mapFillUrl: opts.mapFillUrl || null,
         mapsCanvasSaveUrl: opts.mapsCanvasSaveUrl || null,
+        mapsFillUploadUrl: opts.mapsFillUploadUrl || null,
+        mapWidth: opts.mapWidth,
+        mapHeight: opts.mapHeight,
     });
 
-    window.addEventListener('pagehide', flushMapCanvasPersist);
+    window.addEventListener('pagehide', () => {
+        syncPersistMapFillOnUnloadIfNeeded();
+        flushMapCanvasPersist();
+    });
     document.addEventListener('visibilitychange', () => {
         if (document.visibilityState === 'hidden') {
             flushMapCanvasPersist();
@@ -2732,6 +3276,20 @@ export function initMapsPage(opts) {
     const drawEraseBtn = document.getElementById('map-draw-erase');
     const drawFillBtn = document.getElementById('map-draw-fill');
     const fillPaletteEl = document.getElementById('map-fill-palette');
+    const waterEdgeWrap = document.getElementById('map-water-edge-wrap');
+    const waterEdgeCheckbox = document.getElementById('map-water-edge-decorate');
+    const SS_WATER_EDGE = 'noema_map_water_edge_decoration';
+    try {
+        const saved = sessionStorage.getItem(SS_WATER_EDGE);
+        if (saved === '0') {
+            mapState.waterEdgeDecorate = false;
+        } else if (saved === '1') {
+            mapState.waterEdgeDecorate = true;
+        }
+        // Иначе ключа нет или старое значение — по умолчанию включаем прибрежную полосу.
+    } catch {
+        mapState.waterEdgeDecorate = true;
+    }
     const eraseSettingsEl = document.getElementById('map-erase-settings');
     const eraseRadiusRange = document.getElementById('map-erase-radius');
     const eraseRadiusVal = document.getElementById('map-erase-radius-val');
@@ -2842,6 +3400,21 @@ export function initMapsPage(opts) {
      */
     function syncFillPaletteVisibility() {
         fillPaletteEl?.classList.toggle('hidden', mapState.drawMode !== 'fill');
+        syncWaterEdgeDecorationUi();
+    }
+
+    /**
+     * Чекбокс «Украсить край» — только в режиме заливки и при выбранном цвете «Вода».
+     *
+     * @returns {void}
+     */
+    function syncWaterEdgeDecorationUi() {
+        const show =
+            mapState.drawMode === 'fill' && mapState.fillColorKey === MAP_WATER_FILL_KEY;
+        waterEdgeWrap?.classList.toggle('hidden', !show);
+        if (waterEdgeCheckbox) {
+            waterEdgeCheckbox.checked = mapState.waterEdgeDecorate;
+        }
     }
 
     /**
@@ -2882,6 +3455,7 @@ export function initMapsPage(opts) {
             btn.classList.toggle('ring-offset-1', on);
             btn.classList.toggle('ring-offset-base-200', on);
         });
+        syncWaterEdgeDecorationUi();
     }
 
     function setHint() {
@@ -2898,6 +3472,12 @@ export function initMapsPage(opts) {
                     return;
                 }
                 if (mapState.drawMode === 'fill') {
+                    if (mapState.fillColorKey === MAP_WATER_FILL_KEY && mapState.waterEdgeDecorate) {
+                        hintEl.textContent =
+                            'Клик внутри области «Вода»: светлая кромка вдоль берега. Средняя кнопка — сдвиг карты.';
+
+                        return;
+                    }
                     hintEl.textContent =
                         'Выберите цвет и кликните внутри контура, ограниченного линиями или краем карты. Средняя кнопка — сдвиг.';
 
@@ -3027,9 +3607,20 @@ export function initMapsPage(opts) {
             }
             mapState.fillColorKey = k;
             syncFillColorSwatches();
+            setHint();
         });
     });
     syncFillColorSwatches();
+
+    waterEdgeCheckbox?.addEventListener('change', () => {
+        mapState.waterEdgeDecorate = Boolean(waterEdgeCheckbox.checked);
+        try {
+            sessionStorage.setItem(SS_WATER_EDGE, mapState.waterEdgeDecorate ? '1' : '0');
+        } catch {
+            //
+        }
+        setHint();
+    });
 
     landscapeWidthRange?.addEventListener('input', () => {
         mapState.landscapeLineWidth = clampMapLineWidth(Number(landscapeWidthRange.value));
@@ -3053,7 +3644,7 @@ export function initMapsPage(opts) {
     document.querySelectorAll('.map-landscape-stroke-swatch[data-map-landscape-stroke]').forEach((btn) => {
         btn.addEventListener('click', () => {
             const k = btn.getAttribute('data-map-landscape-stroke');
-            if (k === 'black' || k === 'gray') {
+            if (k && Object.prototype.hasOwnProperty.call(MAP_LINE_STROKE_BY_KEY, k)) {
                 mapState.landscapeStrokeKey = k;
                 syncStrokeSettingsUi();
             }
@@ -3062,7 +3653,7 @@ export function initMapsPage(opts) {
     document.querySelectorAll('.map-borders-stroke-swatch[data-map-borders-stroke]').forEach((btn) => {
         btn.addEventListener('click', () => {
             const k = btn.getAttribute('data-map-borders-stroke');
-            if (k === 'black' || k === 'gray') {
+            if (k && Object.prototype.hasOwnProperty.call(MAP_LINE_STROKE_BY_KEY, k)) {
                 mapState.bordersStrokeKey = k;
                 syncStrokeSettingsUi();
             }
@@ -3280,8 +3871,11 @@ document.addEventListener('DOMContentLoaded', () => {
             mapsSpriteStoreUrl: meta.mapsSpriteStoreUrl,
             mapsSpriteUpdateUrlPattern: meta.mapsSpriteUpdateUrlPattern,
             mapsCanvasSaveUrl: meta.mapsCanvasSaveUrl,
+            mapsFillUploadUrl: meta.mapsFillUploadUrl,
             mapDrawingLines: meta.mapDrawingLines,
             mapFillUrl: meta.mapFillUrl,
+            mapWidth: meta.mapWidth,
+            mapHeight: meta.mapHeight,
             worldSetting: meta.worldSetting,
             mapObjectLabelFontFamily: meta.mapObjectLabelFontFamily,
         });

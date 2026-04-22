@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\User;
 use App\Models\Worlds\World;
+use App\Models\Worlds\WorldMap;
 use App\Models\Worlds\WorldMapSprite;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -20,23 +21,31 @@ class MarkupMapObjectEntitiesTest extends TestCase
             'name' => 'W',
             'onoff' => true,
         ]);
+        $map = WorldMap::query()->create([
+            'world_id' => $world->id,
+            'title' => 'Карта',
+            'width' => 3000,
+            'height' => 3000,
+            'map_drawing_lines' => [],
+            'map_fill_path' => null,
+        ]);
 
         $a = WorldMapSprite::query()->create([
-            'world_id' => $world->id,
+            'world_map_id' => $map->id,
             'sprite_path' => 'Поселения/gorod_1.svg',
             'pos_x' => 10,
             'pos_y' => 20,
             'title' => 'Столица',
         ]);
         $b = WorldMapSprite::query()->create([
-            'world_id' => $world->id,
+            'world_map_id' => $map->id,
             'sprite_path' => 'Поселения/gorod_2.svg',
             'pos_x' => 30,
             'pos_y' => 40,
             'title' => null,
         ]);
         $c = WorldMapSprite::query()->create([
-            'world_id' => $world->id,
+            'world_map_id' => $map->id,
             'sprite_path' => 'Поселения/gorod_3.svg',
             'pos_x' => 50,
             'pos_y' => 60,
@@ -59,9 +68,17 @@ class MarkupMapObjectEntitiesTest extends TestCase
             'name' => 'W',
             'onoff' => true,
         ]);
+        $map = WorldMap::query()->create([
+            'world_id' => $world->id,
+            'title' => 'Карта',
+            'width' => 3000,
+            'height' => 3000,
+            'map_drawing_lines' => [],
+            'map_fill_path' => null,
+        ]);
 
         $sprite = WorldMapSprite::query()->create([
-            'world_id' => $world->id,
+            'world_map_id' => $map->id,
             'sprite_path' => 'Поселения/gorod_1.svg',
             'pos_x' => 0,
             'pos_y' => 0,

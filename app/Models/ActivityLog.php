@@ -6,6 +6,11 @@ use App\Models\Worlds\World;
 use Illuminate\Database\Eloquent\Model as EloquentModel;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
+/**
+ * Запись журнала активности
+ *
+ * Хранится в основной БД приложения вместе с `users` и `worlds`.
+ */
 class ActivityLog extends EloquentModel
 {
     public $timestamps = false;
@@ -29,19 +34,28 @@ class ActivityLog extends EloquentModel
         ];
     }
 
+    /**
+     * Пользователь, совершивший действие
+     */
     public function actor(): BelongsTo
     {
         return $this->belongsTo(User::class, 'actor_id');
     }
 
+    /**
+     * Владелец записи журнала по смыслу мира (обычно владелец мира)
+     */
     public function owner(): BelongsTo
     {
         return $this->belongsTo(User::class, 'owner_user_id');
     }
 
+    /**
+     * Мир, к которому относится запись
+     */
     public function world(): BelongsTo
     {
-        return $this->belongsTo(World::class);
+        return $this->belongsTo(World::class, 'world_id');
     }
 
     /**

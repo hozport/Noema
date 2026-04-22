@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     @include('partials.flash-toast-critical-css')
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>Карты — {{ $world->name }} — Noema</title>
+    <title>{{ $map->title }} — Карты — {{ $world->name }} — Noema</title>
     <link rel="preconnect" href="https://fonts.bunny.net">
     {{-- Подписи на карте: три сеттинга (шрифты под будущую глобальную настройку мира). --}}
     <link href="https://fonts.bunny.net/css?family=cormorant-garamond:400,500,600,700|instrument-sans:400,500,600|exo-2:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
@@ -130,20 +130,41 @@
     @include('site.partials.header')
 
     <main class="map-page-main flex-1 flex flex-col min-h-0">
-        <div class="map-title-row flex flex-wrap items-start justify-between gap-4 py-4 shrink-0">
-            <div class="min-w-0">
-                <h1 class="text-[1.875rem] font-semibold text-base-content leading-tight" style="font-family: 'Cormorant Garamond', Georgia, serif;">Карты</h1>
-                <p class="text-base-content/60 mt-1 max-w-2xl text-sm">{{ $world->name }}</p>
-            </div>
-            <div class="flex items-center gap-1 shrink-0 mt-0.5">
-                <a href="{{ route('worlds.dashboard', $world) }}" class="btn btn-ghost btn-square" title="Назад в дашборд" aria-label="Назад в дашборд">
+        <x-noema-page-head class="map-title-row py-4 shrink-0">
+            <x-slot name="title">
+                <h1 class="text-[1.875rem] font-semibold text-base-content leading-tight" style="font-family: 'Cormorant Garamond', Georgia, serif;">{{ $map->title }}</h1>
+            </x-slot>
+            <x-slot name="below">
+                <p class="text-base-content/60 max-w-2xl text-sm">{{ $world->name }} — <span class="tabular-nums">{{ $map->width }}×{{ $map->height }} px</span></p>
+            </x-slot>
+            <x-slot name="center">
+                <button type="button" id="map-undo-last-action" class="btn btn-outline btn-sm rounded-none gap-1.5 min-h-9" disabled title="Отменить последнее действие (Ctrl+Z)" aria-label="Отменить последнее действие">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="M3 7v6h6"/>
+                        <path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"/>
+                    </svg>
+                    <span>Отменить</span>
+                </button>
+            </x-slot>
+            <x-slot name="actions">
+                <a href="{{ route('worlds.maps.index', $world) }}" class="btn btn-ghost btn-square shrink-0" title="К списку карт" aria-label="К списку карт">
                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                         <path d="M19 12H5M12 19l-7-7 7-7"/>
                     </svg>
                 </a>
-                @include('partials.activity-log-button', ['world' => $world, 'mapsModuleJournal' => true])
-            </div>
-        </div>
+                <button type="button" class="btn btn-ghost btn-square shrink-0" title="Настройки карты" aria-label="Настройки карты" onclick="document.getElementById('mapSettingsModal').showModal()">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <circle cx="12" cy="12" r="3"/>
+                        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+                    </svg>
+                </button>
+                @include('partials.activity-log-button', ['world' => $world, 'map' => $map])
+            </x-slot>
+        </x-noema-page-head>
+
+        @if (session('success'))
+            <p class="text-success mb-2 px-6 shrink-0" role="alert" data-auto-dismiss>{{ session('success') }}</p>
+        @endif
 
         <script type="application/json" id="map-page-meta">@json($mapPageMeta)</script>
 
@@ -218,6 +239,20 @@
                             </button>
                         </li>
                     </ul>
+                    @php
+                        $mapLineStrokeSwatches = [
+                            ['key' => 'black', 'title' => 'Чёрный', 'bg' => '#1a1814'],
+                            ['key' => 'earth', 'title' => 'Земля', 'bg' => 'var(--noema-earth)'],
+                            ['key' => 'grass', 'title' => 'Трава', 'bg' => 'var(--noema-grass)'],
+                            ['key' => 'water', 'title' => 'Вода', 'bg' => 'var(--noema-water)'],
+                            ['key' => 'deep_sea', 'title' => 'Глубокая вода', 'bg' => 'var(--noema-deep-sea)'],
+                            ['key' => 'ice', 'title' => 'Лёд', 'bg' => 'var(--noema-ice)'],
+                            ['key' => 'forest', 'title' => 'Лес', 'bg' => 'var(--noema-forest)'],
+                            ['key' => 'desert', 'title' => 'Пустыня', 'bg' => 'var(--noema-desert)'],
+                            ['key' => 'mountain', 'title' => 'Горы', 'bg' => 'var(--noema-mountain)'],
+                            ['key' => 'swamp', 'title' => 'Болота', 'bg' => 'var(--noema-swamp)'],
+                        ];
+                    @endphp
                     <div id="map-stroke-settings" class="hidden flex flex-col gap-3 mt-2 pt-2 border-t border-base-300/40" aria-label="Толщина и цвет линий">
                         <div class="flex flex-col gap-1.5" id="map-stroke-landscape-group">
                             <span class="text-[11px] text-base-content/55 uppercase tracking-wide">Линии ландшафта</span>
@@ -227,8 +262,9 @@
                                 <span id="map-stroke-landscape-width-val" class="text-xs tabular-nums w-6 text-right text-base-content/80">2</span>
                             </div>
                             <div class="flex flex-wrap items-center gap-2" role="group" aria-label="Цвет линии ландшафта">
-                                <button type="button" class="map-landscape-stroke-swatch w-8 h-8 rounded-none border border-base-300 shrink-0 ring-2 ring-primary ring-offset-1 ring-offset-base-200" data-map-landscape-stroke="black" style="background:#1a1814" title="Чёрный" aria-label="Чёрный"></button>
-                                <button type="button" class="map-landscape-stroke-swatch w-8 h-8 rounded-none border border-base-300 shrink-0" data-map-landscape-stroke="gray" style="background:#767670" title="Серый" aria-label="Серый"></button>
+                                @foreach ($mapLineStrokeSwatches as $sw)
+                                    <button type="button" class="map-landscape-stroke-swatch w-8 h-8 rounded-none border border-base-300 shrink-0" data-map-landscape-stroke="{{ $sw['key'] }}" style="background-color: {{ $sw['bg'] }}" title="{{ $sw['title'] }}" aria-label="{{ $sw['title'] }}"></button>
+                                @endforeach
                             </div>
                         </div>
                         <div class="flex flex-col gap-1.5" id="map-stroke-borders-group">
@@ -239,17 +275,38 @@
                                 <span id="map-stroke-borders-width-val" class="text-xs tabular-nums w-6 text-right text-base-content/80">2</span>
                             </div>
                             <div class="flex flex-wrap items-center gap-2" role="group" aria-label="Цвет штриха границы">
-                                <button type="button" class="map-borders-stroke-swatch w-8 h-8 rounded-none border border-base-300 shrink-0" data-map-borders-stroke="black" style="background:#1a1814" title="Чёрный" aria-label="Чёрный"></button>
-                                <button type="button" class="map-borders-stroke-swatch w-8 h-8 rounded-none border border-base-300 shrink-0 ring-2 ring-primary ring-offset-1 ring-offset-base-200" data-map-borders-stroke="gray" style="background:#767670" title="Серый" aria-label="Серый"></button>
+                                @foreach ($mapLineStrokeSwatches as $sw)
+                                    <button type="button" class="map-borders-stroke-swatch w-8 h-8 rounded-none border border-base-300 shrink-0" data-map-borders-stroke="{{ $sw['key'] }}" style="background-color: {{ $sw['bg'] }}" title="{{ $sw['title'] }}" aria-label="{{ $sw['title'] }}"></button>
+                                @endforeach
                             </div>
                         </div>
                     </div>
-                    <div id="map-fill-palette" class="hidden flex flex-wrap items-center gap-2 mt-2" role="group" aria-label="Цвет заливки">
-                        <span class="text-[11px] text-base-content/55 uppercase tracking-wide shrink-0">Цвет</span>
-                        <button type="button" class="map-fill-swatch w-8 h-8 rounded-none border border-base-300 shrink-0" data-fill-color="grass" style="background: rgb(168, 212, 168);" title="Трава" aria-label="Трава"></button>
-                        <button type="button" class="map-fill-swatch w-8 h-8 rounded-none border border-base-300 shrink-0" data-fill-color="earth" style="background: rgb(212, 196, 168);" title="Земля" aria-label="Земля"></button>
-                        <button type="button" class="map-fill-swatch w-8 h-8 rounded-none border border-base-300 shrink-0" data-fill-color="water" style="background: rgb(168, 208, 232);" title="Вода" aria-label="Вода"></button>
-                        <button type="button" class="map-fill-swatch w-8 h-8 rounded-none border border-base-300 shrink-0" data-fill-color="snow" style="background: rgb(242, 244, 248);" title="Снег" aria-label="Снег"></button>
+                    <div id="map-fill-palette" class="hidden flex flex-col gap-4 mt-2" aria-label="Цвет заливки">
+                        <div>
+                            <p class="text-[11px] font-medium text-base-content/55 uppercase tracking-wide mb-2">Основные</p>
+                            <div class="flex flex-wrap items-center gap-2" role="group" aria-label="Основные цвета заливки">
+                                <button type="button" class="map-fill-swatch w-8 h-8 rounded-none border border-base-300 shrink-0" data-fill-color="earth" style="background-color: var(--noema-earth)" title="Земля" aria-label="Земля"></button>
+                                <button type="button" class="map-fill-swatch w-8 h-8 rounded-none border border-base-300 shrink-0" data-fill-color="grass" style="background-color: var(--noema-grass)" title="Трава" aria-label="Трава"></button>
+                                <button type="button" class="map-fill-swatch w-8 h-8 rounded-none border border-base-300 shrink-0" data-fill-color="water" style="background-color: var(--noema-water)" title="Вода" aria-label="Вода"></button>
+                                <button type="button" class="map-fill-swatch w-8 h-8 rounded-none border border-base-300 shrink-0" data-fill-color="deep_sea" style="background-color: var(--noema-deep-sea)" title="Глубокая вода" aria-label="Глубокая вода"></button>
+                                <button type="button" class="map-fill-swatch w-8 h-8 rounded-none border border-base-300 shrink-0" data-fill-color="ice" style="background-color: var(--noema-ice)" title="Лёд" aria-label="Лёд"></button>
+                            </div>
+                        </div>
+                        <div>
+                            <p class="text-[11px] font-medium text-base-content/55 uppercase tracking-wide mb-2">Дополнительные</p>
+                            <div class="flex flex-wrap items-center gap-2" role="group" aria-label="Дополнительные цвета заливки">
+                                <button type="button" class="map-fill-swatch w-8 h-8 rounded-none border border-base-300 shrink-0" data-fill-color="forest" style="background-color: var(--noema-forest)" title="Лес" aria-label="Лес"></button>
+                                <button type="button" class="map-fill-swatch w-8 h-8 rounded-none border border-base-300 shrink-0" data-fill-color="desert" style="background-color: var(--noema-desert)" title="Пустыня" aria-label="Пустыня"></button>
+                                <button type="button" class="map-fill-swatch w-8 h-8 rounded-none border border-base-300 shrink-0" data-fill-color="mountain" style="background-color: var(--noema-mountain)" title="Горы" aria-label="Горы"></button>
+                                <button type="button" class="map-fill-swatch w-8 h-8 rounded-none border border-base-300 shrink-0" data-fill-color="swamp" style="background-color: var(--noema-swamp)" title="Болота" aria-label="Болота"></button>
+                            </div>
+                        </div>
+                        <div id="map-water-edge-wrap" class="hidden flex flex-col gap-1.5 pt-2 border-t border-base-300/40">
+                            <label class="flex items-start gap-2 cursor-pointer max-w-full">
+                                <input type="checkbox" id="map-water-edge-decorate" class="checkbox checkbox-sm rounded-none mt-0.5 shrink-0 border-base-300" />
+                                <span class="text-xs text-base-content/80 leading-snug">Украсить край: светлая кромка у заливки «Вода»</span>
+                            </label>
+                        </div>
                     </div>
                     <div id="map-erase-settings" class="hidden flex flex-col gap-1.5 mt-2 pt-2 border-t border-base-300/40" aria-label="Размер ластика">
                         <span class="text-[11px] text-base-content/55 uppercase tracking-wide">Ластик</span>
@@ -277,8 +334,70 @@
                 <div id="map-stage-mount"></div>
             </div>
         </div>
-        <p class="map-hint-row text-xs text-base-content/45 shrink-0">Холст 3000×3000 px. Перетаскивание вида: левая кнопка по пустому полю или средняя кнопка мыши; в режиме рисования ландшафта панорама только колесиком. Ctrl+Z (до 10 шагов) — отмена последнего штриха или заливки. Правый клик по объекту — удалить. Двойной клик по объекту — текст. Линейки у краёв окна; направляющие на карте.</p>
+        <p class="map-hint-row text-xs text-base-content/45 shrink-0">Холст <span class="tabular-nums">{{ $map->width }}×{{ $map->height }}</span> px. Перетаскивание вида: левая кнопка по пустому полю или средняя кнопка мыши; в режиме рисования ландшафта панорама только колесиком. Ctrl+Z (до 10 шагов) — отмена последнего штриха или заливки. Правый клик по объекту — удалить. Двойной клик по объекту — текст. Линейки у краёв окна; направляющие на карте. Смена размера в настройках сбрасывает сохранённую заливку (линии остаются).</p>
     </main>
+
+    <dialog id="mapSettingsModal" class="modal modal-middle" aria-labelledby="map-settings-heading">
+        <div class="modal-box noema-settings-modal-box rounded-none border border-base-300 bg-base-200 shadow-2xl p-6 md:p-8 w-full">
+            <div class="noema-settings-modal-inner">
+                <h2 id="map-settings-heading" class="font-display text-xl font-semibold text-base-content mb-6">Настройки карты</h2>
+                <form method="POST" action="{{ route('worlds.maps.update', [$world, $map]) }}" class="min-h-0">
+                @csrf
+                @method('PUT')
+                <div class="noema-settings-modal-body space-y-4">
+                <div class="form-control w-full">
+                    <label class="label py-1" for="mapSettingsTitle"><span class="label-text">Название</span></label>
+                    <input type="text" id="mapSettingsTitle" name="title" value="{{ old('title', $map->title) }}" required maxlength="255"
+                        class="input input-bordered w-full rounded-none bg-base-100 border-base-300 @error('title') input-error @enderror">
+                    @error('title')
+                        <p class="text-error text-sm mt-1">{{ $message }}</p>
+                    @enderror
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div class="form-control w-full">
+                        <label class="label py-1" for="mapSettingsWidth"><span class="label-text">Ширина (px)</span></label>
+                        <input type="number" id="mapSettingsWidth" name="width" value="{{ old('width', $map->width) }}" required min="{{ \App\Models\Worlds\WorldMap::MIN_SIDE }}" max="{{ \App\Models\Worlds\WorldMap::MAX_SIDE }}" step="1"
+                            class="input input-bordered w-full rounded-none bg-base-100 border-base-300 tabular-nums @error('width') input-error @enderror">
+                        @error('width')
+                            <p class="text-error text-sm mt-1">{{ $message }}</p>
+                        @enderror
+                    </div>
+                    <div class="form-control w-full">
+                        <label class="label py-1" for="mapSettingsHeight"><span class="label-text">Высота (px)</span></label>
+                        <input type="number" id="mapSettingsHeight" name="height" value="{{ old('height', $map->height) }}" required min="{{ \App\Models\Worlds\WorldMap::MIN_SIDE }}" max="{{ \App\Models\Worlds\WorldMap::MAX_SIDE }}" step="1"
+                            class="input input-bordered w-full rounded-none bg-base-100 border-base-300 tabular-nums @error('height') input-error @enderror">
+                        @error('height')
+                            <p class="text-error text-sm mt-1">{{ $message }}</p>
+                        @enderror
+                    </div>
+                </div>
+                <p class="text-xs text-base-content/50">{{ \App\Models\Worlds\WorldMap::MIN_SIDE }}…{{ \App\Models\Worlds\WorldMap::MAX_SIDE }} px. Если изменить размер, файл заливки будет сброшен.</p>
+                </div>
+                <div class="noema-settings-modal-footer flex flex-wrap items-center justify-between gap-3 pt-4">
+                    <div class="flex flex-wrap gap-1 items-center">
+                        <button type="submit" form="map-settings-delete-form" class="btn btn-error btn-square rounded-none shrink-0" title="Удалить карту" aria-label="Удалить карту" onclick="return confirm('Удалить эту карту и все объекты на ней?');">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                <path d="M3 6h18"/>
+                                <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/>
+                                <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/>
+                            </svg>
+                        </button>
+                    </div>
+                    <div class="flex flex-row-reverse flex-wrap gap-2 justify-end">
+                        <button type="submit" class="btn btn-primary rounded-none">Сохранить</button>
+                        <button type="button" class="btn btn-ghost rounded-none" onclick="document.getElementById('mapSettingsModal').close()">Отмена</button>
+                    </div>
+                </div>
+                <div class="noema-settings-modal-grow" aria-hidden="true"></div>
+            </form>
+            </div>
+            <form id="map-settings-delete-form" method="POST" action="{{ route('worlds.maps.destroy', [$world, $map]) }}" class="hidden" aria-hidden="true">
+                @csrf
+                @method('DELETE')
+            </form>
+        </div>
+        <form method="dialog" class="modal-backdrop"><button type="submit" class="cursor-default opacity-0 absolute inset-0 w-full h-full" aria-label="Закрыть">close</button></form>
+    </dialog>
 
     <dialog id="map-object-edit-dialog" class="modal modal-middle" aria-labelledby="map-object-edit-heading">
         <div class="modal-box rounded-none border border-base-300 bg-base-200 shadow-2xl p-6 md:p-8 max-w-lg w-full">
@@ -302,5 +421,12 @@
     </dialog>
 
     @include('site.partials.footer')
+    @if ($errors->has('title') || $errors->has('width') || $errors->has('height'))
+        <script>
+            document.addEventListener('DOMContentLoaded', function () {
+                document.getElementById('mapSettingsModal')?.showModal();
+            });
+        </script>
+    @endif
 </body>
 </html>

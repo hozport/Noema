@@ -358,6 +358,15 @@
                 justify-content: center;
             }
         }
+        /* DaisyUI .modal-middle .modal-box задаёт height:auto и max-height:calc(100vh - 5em) с более высокой специфичностью, чем один класс на панели */
+        #timelineSettingsModal.modal-middle .modal-box.noema-settings-modal-box {
+            width: min(50vw, calc(100vw - 2rem)) !important;
+            max-width: min(50vw, calc(100vw - 2rem)) !important;
+            height: min(90vh, calc(100dvh - 2rem)) !important;
+            min-height: min(90vh, calc(100dvh - 2rem)) !important;
+            max-height: min(90vh, calc(100dvh - 2rem)) !important;
+            overflow: hidden !important;
+        }
     </style>
     <script type="application/json" id="timeline-axis-config">{!! json_encode([
         'tMin' => $visual['tMin'],
@@ -383,12 +392,14 @@
                 <span>{{ session('error') }}</span>
             </div>
         @endif
-        <div class="mb-6 grid grid-cols-1 gap-y-4 md:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] md:items-center md:gap-x-4 md:gap-y-0">
-            <div class="min-w-0 md:justify-self-start">
+        <x-noema-page-head>
+            <x-slot name="title">
                 <h1 class="text-[1.875rem] font-semibold text-base-content leading-tight" style="font-family: 'Cormorant Garamond', Georgia, serif;">Таймлайн</h1>
-                <p class="text-base-content/60 mt-1">{{ $world->name }}</p>
-            </div>
-            <div class="flex w-full justify-center gap-2 md:w-auto md:justify-self-center">
+            </x-slot>
+            <x-slot name="below">
+                <p class="text-base-content/60">{{ $world->name }}</p>
+            </x-slot>
+            <x-slot name="center">
                 <button type="button" id="timeline-open-line-dialog" class="btn btn-primary btn-sm btn-square shrink-0 rounded-none" title="Создать линию" aria-label="Создать линию">
                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                         <circle cx="5" cy="12" r="2.5" fill="currentColor" stroke="none"/>
@@ -403,8 +414,8 @@
                         <path d="M12 15v6M9 18h6"/>
                     </svg>
                 </button>
-            </div>
-            <div class="flex flex-wrap items-center gap-1 justify-end md:justify-self-end">
+            </x-slot>
+            <x-slot name="actions">
                 <a href="{{ route('worlds.dashboard', $world) }}" class="btn btn-ghost btn-square shrink-0" title="Назад в дашборд" aria-label="Назад в дашборд">
                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                         <path d="M19 12H5M12 19l-7-7 7-7"/>
@@ -417,7 +428,7 @@
                         <path d="M12 18V9M9 15l3 3 3-3"/>
                     </svg>
                 </a>
-                <button type="button" class="btn btn-ghost btn-square shrink-0" title="Настройки таймлайна" aria-label="Настройки таймлайна" onclick="document.getElementById('timelineSettingsModal').showModal()">
+                <button type="button" class="btn btn-ghost btn-square shrink-0" title="Настройки" aria-label="Настройки" onclick="document.getElementById('timelineSettingsModal').showModal()">
                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                         <circle cx="12" cy="12" r="3"/>
                         <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
@@ -428,9 +439,9 @@
                         <path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/>
                     </svg>
                 </button>
-                @include('partials.activity-log-button', ['world' => $world, 'timelineJournal' => true, 'journalTitle' => 'Журнал'])
-            </div>
-        </div>
+                @include('partials.activity-log-button', ['world' => $world, 'timelineJournal' => true])
+            </x-slot>
+        </x-noema-page-head>
         </div>
 
         <div class="timeline-canvas-section flex-1 min-h-0 min-w-0 flex flex-col w-full border-y border-base-300/25 bg-base-200/20 rounded-none overflow-hidden">
@@ -460,36 +471,39 @@
     <div id="timeline-context-menu" class="fixed z-[10050] hidden" role="menu" aria-hidden="true"></div>
 
     <dialog id="timelineSettingsModal" class="modal modal-middle" aria-labelledby="timeline-settings-heading">
-        <div class="modal-box rounded-none border border-base-300 bg-base-200 shadow-2xl p-6 md:p-8 max-w-lg w-full">
-            <h2 id="timeline-settings-heading" class="font-display text-xl font-semibold text-base-content mb-4">Настройки таймлайна</h2>
-            <form id="timeline-settings-form" method="POST" action="{{ route('worlds.timeline.world-reference.update', $world) }}">
+        <div class="modal-box noema-settings-modal-box rounded-none border border-base-300 bg-base-200 shadow-2xl p-6 md:p-8 w-full">
+            <div class="noema-settings-modal-inner">
+                <h2 id="timeline-settings-heading" class="font-display text-xl font-semibold text-base-content mb-4">Настройки</h2>
+                <form id="timeline-settings-form" method="POST" action="{{ route('worlds.timeline.world-reference.update', $world) }}" class="min-h-0">
                 @csrf
                 @method('PUT')
+                <div class="noema-settings-modal-body space-y-4">
                 <div class="form-control w-full">
                     <label class="label py-1" for="timeline-settings-reference"><span class="label-text">Инициирующее событие</span></label>
                     <input type="text" id="timeline-settings-reference" name="reference_point" value="{{ old('reference_point', $world->reference_point) }}" maxlength="255"
                         class="input input-bordered w-full rounded-none bg-base-100 border-base-300 @error('reference_point') input-error @enderror"
                         placeholder="Подпись нуля на шкале времени">
-                    <p class="text-xs text-base-content/50 mt-1">Отображается на шкале времени и в связанных подсказках.</p>
                     <p id="timeline-settings-err-reference_point" class="text-error text-sm mt-1 {{ $errors->has('reference_point') ? '' : 'hidden' }}" role="alert">
                         @if ($errors->has('reference_point')) {{ $errors->first('reference_point') }} @endif
                     </p>
                 </div>
-                <div class="form-control w-full mt-4">
+                <div class="form-control w-full">
                     <label class="label py-1" for="timeline-settings-max-year"><span class="label-text">Ограничить таймлайн</span></label>
                     <input type="number" id="timeline-settings-max-year" name="timeline_max_year" value="{{ old('timeline_max_year', $world->timeline_max_year) }}" min="0"
                         class="input input-bordered w-full rounded-none bg-base-100 border-base-300 @error('timeline_max_year') input-error @enderror"
                         placeholder="Последний год на шкале (пусто — без ограничения)">
-                    <p class="text-xs text-base-content/50 mt-1">Правая граница шкалы — этот год (можно дальше данных). Дублирует поле в настройках мира на дашборде.</p>
                     <p id="timeline-settings-err-timeline_max_year" class="text-error text-sm mt-1 {{ $errors->has('timeline_max_year') ? '' : 'hidden' }}" role="alert">
                         @if ($errors->has('timeline_max_year')) {{ $errors->first('timeline_max_year') }} @endif
                     </p>
+                </div>
                 </div>
                 <div class="modal-action flex flex-wrap gap-2 justify-end pt-4">
                     <button type="button" class="btn btn-ghost rounded-none" onclick="document.getElementById('timelineSettingsModal').close()">Отмена</button>
                     <button type="submit" class="btn btn-primary rounded-none">Сохранить</button>
                 </div>
+                <div class="noema-settings-modal-grow" aria-hidden="true"></div>
             </form>
+            </div>
         </div>
         <form method="dialog" class="modal-backdrop"><button type="submit" class="cursor-default opacity-0 absolute inset-0 w-full h-full" aria-label="Закрыть">close</button></form>
     </dialog>

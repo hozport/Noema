@@ -40,6 +40,7 @@ export default defineConfig({
                 'resources/js/connections.js',
                 'resources/js/maps.js',
                 'resources/js/svg-viewer.js',
+                'resources/js/color-tool.js',
             ],
             refresh: true,
         }),

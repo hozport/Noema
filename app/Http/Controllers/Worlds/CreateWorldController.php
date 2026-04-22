@@ -28,10 +28,8 @@ class CreateWorldController extends Controller
         $imagePath = null;
 
         if ($request->hasFile('image')) {
+            $user->ensureUserUploadsDirectory('worlds');
             $worldsDir = $user->getUploadsPath('worlds');
-            if (! is_dir($worldsDir)) {
-                mkdir($worldsDir, 0755, true);
-            }
             $extension = $request->file('image')->getClientOriginalExtension();
             $filename = Str::random(20).'.'.$extension;
             $request->file('image')->move($worldsDir, $filename);
@@ -43,6 +41,8 @@ class CreateWorldController extends Controller
             'reference_point' => $validated['reference_point'] ?? null,
             'annotation' => $validated['annotation'] ?? null,
             'image_path' => $imagePath,
+            'maps_default_width' => $user->mapsDefaultWidth(),
+            'maps_default_height' => $user->mapsDefaultHeight(),
         ]);
 
         TimelineBootstrapService::bootstrap($world);

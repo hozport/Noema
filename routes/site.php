@@ -13,4 +13,5 @@ Route::name('site.')->group(function () {
     Route::get('/legal', [SiteController::class, 'legal'])->name('legal');
     Route::get('/register', [SiteController::class, 'register'])->name('register');
     Route::get('/tools/svg-viewer', [SiteController::class, 'svgViewer'])->name('svg-viewer');
+    Route::get('/tools/colors', [SiteController::class, 'colorTool'])->name('color-tool');
 });

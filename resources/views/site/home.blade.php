@@ -1,6 +1,6 @@
 @extends('site.layout')
 
-@section('title', 'Noema — система для создания миров')
+@section('title', 'Noema — система проектирования миров')
 
 @section('content')
     <section id="hero" class="w-full border-b border-base-300 bg-gradient-to-br from-base-100 via-base-100 to-base-300/25">
@@ -8,7 +8,7 @@
             <div class="grid lg:grid-cols-2 gap-10 lg:gap-14 items-start lg:items-center">
                 <div class="order-2 lg:order-1 max-w-xl">
                     <h1 class="font-display text-3xl sm:text-4xl lg:text-5xl font-semibold text-base-content leading-tight tracking-tight">
-                        Система для создания Миров
+                        Система проектирования Миров
                     </h1>
                     <p class="mt-4 text-base sm:text-lg text-base-content/75 leading-relaxed">
                         Для авторов, сценаристов, геймдизайнеров и просто людей с бесконечной фантазией.

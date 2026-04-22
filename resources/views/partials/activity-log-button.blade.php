@@ -1,9 +1,11 @@
 @php
-    $journalTitle = $journalTitle ?? 'Журнал изменений';
+    $journalTitle = $journalTitle ?? 'Логи';
     if (! empty($card) && isset($world, $story) && $world && $story) {
         $href = route('cards.card.activity', [$world, $story, $card]);
     } elseif (! empty($story) && isset($world) && $world && empty($card)) {
         $href = route('cards.stories.activity', [$world, $story]);
+    } elseif (! empty($map) && isset($world) && $world && empty($mapsModuleJournal ?? null)) {
+        $href = route('worlds.maps.activity', [$world, $map]);
     } elseif (! empty($biography) && isset($world) && $world) {
         $href = route('biography.activity', [$world, $biography]);
     } elseif (! empty($faction) && isset($world) && $world) {

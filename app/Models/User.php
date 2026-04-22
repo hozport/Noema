@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Facades\File;
 use Illuminate\Support\Str;
 
 class User extends Authenticatable
@@ -36,6 +37,8 @@ class User extends Authenticatable
         'password',
         'folder_token',
         'worlds_list_sort',
+        'maps_default_width',
+        'maps_default_height',
     ];
 
     /**
@@ -66,6 +69,22 @@ class User extends Authenticatable
         return $this->hasMany(World::class);
     }
 
+    /**
+     * Ширина по умолчанию для новых карт (px): аккаунт и создание мира.
+     */
+    public function mapsDefaultWidth(): int
+    {
+        return (int) ($this->maps_default_width ?? World::MAPS_DEFAULT_SIDE_PX);
+    }
+
+    /**
+     * Высота по умолчанию для новых карт (px): аккаунт и создание мира.
+     */
+    public function mapsDefaultHeight(): int
+    {
+        return (int) ($this->maps_default_height ?? World::MAPS_DEFAULT_SIDE_PX);
+    }
+
     public function getUploadsPath(string $subpath = ''): string
     {
         $base = public_path('uploads/users/'.$this->folder_token);
@@ -78,6 +97,27 @@ class User extends Authenticatable
         $base = 'uploads/users/'.$this->folder_token;
 
         return asset($base.($subpath ? '/'.trim($subpath, '/') : ''));
+    }
+
+    /**
+     * Создаёт подкаталог в public/uploads/users/{folder_token}/… при отсутствии
+     *
+     * Учётная запись хранит файлы под public/uploads; веб-процесс должен иметь право записи
+     * на каталог public/uploads (типично владелец www-data).
+     *
+     * @param  string  $subpath  Путь относительно каталога пользователя (например profile, worlds)
+     */
+    public function ensureUserUploadsDirectory(string $subpath): void
+    {
+        $dir = $this->getUploadsPath($subpath);
+        if (File::isDirectory($dir)) {
+            return;
+        }
+        if (! File::makeDirectory($dir, 0755, true)) {
+            throw new \RuntimeException(
+                'Не удалось создать каталог для файлов: '.$dir.'. Проверьте владельца и права на public/uploads (нужна запись для пользователя веб-сервера, например www-data).'
+            );
+        }
     }
 
     public function avatarUrl(): ?string

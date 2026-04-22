@@ -11,10 +11,16 @@ use App\Models\User;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 use Illuminate\Support\Facades\Storage;
 
 class World extends Model
 {
+    /**
+     * Сторона холста новой карты по умолчанию (px), совпадает с дефолтом в миграции.
+     */
+    public const MAPS_DEFAULT_SIDE_PX = 2000;
+
     /**
      * @var array<string, mixed>
      */
@@ -31,8 +37,8 @@ class World extends Model
         'image_path',
         'onoff',
         'setting',
-        'map_drawing_lines',
-        'map_fill_path',
+        'maps_default_width',
+        'maps_default_height',
     ];
 
     protected function casts(): array
@@ -40,17 +46,7 @@ class World extends Model
         return [
             'onoff' => 'boolean',
             'setting' => WorldSetting::class,
-            'map_drawing_lines' => 'array',
         ];
-    }
-
-    protected static function booted(): void
-    {
-        static::deleting(function (World $world) {
-            if ($world->map_fill_path !== null && $world->map_fill_path !== '') {
-                Storage::disk('public')->delete($world->map_fill_path);
-            }
-        });
     }
 
     public function scopeActive($query)
@@ -93,9 +89,36 @@ class World extends Model
         return $this->hasMany(ConnectionBoard::class)->orderByDesc('updated_at');
     }
 
-    public function mapSprites(): HasMany
+    /**
+     * Карты мира (отдельные холсты).
+     */
+    public function maps(): HasMany
     {
-        return $this->hasMany(WorldMapSprite::class)->orderBy('id');
+        return $this->hasMany(WorldMap::class)->orderByDesc('updated_at');
+    }
+
+    /**
+     * Все спрайты на всех картах мира (для разметки и выборов по миру).
+     */
+    public function mapSprites(): HasManyThrough
+    {
+        return $this->hasManyThrough(WorldMapSprite::class, WorldMap::class);
+    }
+
+    /**
+     * Ширина по умолчанию для новых карт (px).
+     */
+    public function mapsDefaultWidth(): int
+    {
+        return (int) ($this->maps_default_width ?? self::MAPS_DEFAULT_SIDE_PX);
+    }
+
+    /**
+     * Высота по умолчанию для новых карт (px).
+     */
+    public function mapsDefaultHeight(): int
+    {
+        return (int) ($this->maps_default_height ?? self::MAPS_DEFAULT_SIDE_PX);
     }
 
     public function imageUrl(): ?string

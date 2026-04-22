@@ -6,6 +6,7 @@ use App\Models\Cards\Card;
 use App\Models\Cards\Story;
 use App\Models\User;
 use App\Models\Worlds\World;
+use App\Models\Worlds\WorldMap;
 use App\Models\Worlds\WorldMapSprite;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -361,8 +362,16 @@ class CardsModuleTest extends TestCase
             'number' => 1,
             'content' => null,
         ]);
-        $sprite = WorldMapSprite::query()->create([
+        $wm = WorldMap::query()->create([
             'world_id' => $world->id,
+            'title' => 'Карта',
+            'width' => 3000,
+            'height' => 3000,
+            'map_drawing_lines' => [],
+            'map_fill_path' => null,
+        ]);
+        $sprite = WorldMapSprite::query()->create([
+            'world_map_id' => $wm->id,
             'sprite_path' => 'Поселения/x.svg',
             'pos_x' => 0,
             'pos_y' => 0,

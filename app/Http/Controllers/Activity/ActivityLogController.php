@@ -16,6 +16,8 @@ use App\Models\Worlds\ConnectionBoard;
 use App\Models\Worlds\ConnectionBoardEdge;
 use App\Models\Worlds\ConnectionBoardNode;
 use App\Models\Worlds\World;
+use App\Models\Worlds\WorldMap;
+use App\Models\Worlds\WorldMapSprite;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -163,12 +165,7 @@ class ActivityLogController extends Controller
                         ->where('subject_id', $storyId);
                 })->orWhere(function ($q2) use ($storyId) {
                     $q2->where('subject_type', Card::class)
-                        ->whereExists(function ($sub) use ($storyId) {
-                            $sub->selectRaw('1')
-                                ->from('cards')
-                                ->whereColumn('cards.id', 'activity_logs.subject_id')
-                                ->where('cards.story_id', $storyId);
-                        });
+                        ->whereIn('subject_id', Card::query()->select('id')->where('story_id', $storyId));
                 });
             })
             ->with('actor')
@@ -457,6 +454,32 @@ class ActivityLogController extends Controller
     }
 
     /**
+     * Журнал одной карты мира: действия с этой картой и со спрайтами на ней.
+     *
+     * @param  Request  $request  HTTP-запрос
+     * @param  World  $world  Мир
+     * @param  WorldMap  $map  Карта
+     */
+    public function worldMapActivity(Request $request, World $world, WorldMap $map): View
+    {
+        $this->assertWorldOwnerAndVisible($request, $world);
+        $this->assertWorldMapInWorld($world, $map);
+
+        $logs = $this->worldMapActivityQuery($world, $map)
+            ->with('actor')
+            ->orderByDesc('id')
+            ->paginate(25)
+            ->withQueryString();
+
+        return view('activity.index', [
+            'scope' => 'world_map',
+            'world' => $world,
+            'map' => $map,
+            'logs' => $logs,
+        ]);
+    }
+
+    /**
      * Удаляет все записи общего журнала аккаунта.
      *
      * @param  Request  $request  HTTP-запрос
@@ -578,12 +601,7 @@ class ActivityLogController extends Controller
                         ->where('subject_id', $storyId);
                 })->orWhere(function ($q2) use ($storyId) {
                     $q2->where('subject_type', Card::class)
-                        ->whereExists(function ($sub) use ($storyId) {
-                            $sub->selectRaw('1')
-                                ->from('cards')
-                                ->whereColumn('cards.id', 'activity_logs.subject_id')
-                                ->where('cards.story_id', $storyId);
-                        });
+                        ->whereIn('subject_id', Card::query()->select('id')->where('story_id', $storyId));
                 });
             })
             ->delete();
@@ -805,6 +823,25 @@ class ActivityLogController extends Controller
     }
 
     /**
+     * Очищает журнал одной карты (та же выборка, что и в worldMapActivity()).
+     *
+     * @param  Request  $request  HTTP-запрос
+     * @param  World  $world  Мир
+     * @param  WorldMap  $map  Карта
+     */
+    public function clearWorldMapActivity(Request $request, World $world, WorldMap $map): RedirectResponse
+    {
+        $this->assertWorldOwnerAndVisible($request, $world);
+        $this->assertWorldMapInWorld($world, $map);
+
+        $this->worldMapActivityQuery($world, $map)->delete();
+
+        return redirect()
+            ->route('worlds.maps.activity', [$world, $map])
+            ->with('success', 'Журнал очищен.');
+    }
+
+    /**
      * Проверяет, что мир принадлежит пользователю и не скрыт.
      *
      * @param  Request  $request  HTTP-запрос
@@ -873,7 +910,52 @@ class ActivityLogController extends Controller
     }
 
     /**
+     * Проверяет принадлежность карты миру.
+     *
+     * @param  World  $world  Мир
+     * @param  WorldMap  $map  Карта
+     */
+    private function assertWorldMapInWorld(World $world, WorldMap $map): void
+    {
+        if ((int) $map->world_id !== (int) $world->id) {
+            abort(404);
+        }
+    }
+
+    /**
+     * Базовый запрос журнала одной карты: запись по самой карте и по спрайтам на ней (действия map.*).
+     *
+     * Спрайты фильтруются подзапросом по `world_map_id`, без выборки id в PHP.
+     *
+     * @param  World  $world  Мир
+     * @param  WorldMap  $map  Карта
+     * @return Builder<ActivityLog>
+     */
+    private function worldMapActivityQuery(World $world, WorldMap $map): Builder
+    {
+        $mapId = $map->id;
+
+        return ActivityLog::query()
+            ->where('world_id', $world->id)
+            ->where('action', 'like', 'map.%')
+            ->where(function ($q) use ($mapId) {
+                $q->where(function ($q2) use ($mapId) {
+                    $q2->where('subject_type', WorldMap::class)
+                        ->where('subject_id', $mapId);
+                })->orWhere(function ($q2) use ($mapId) {
+                    $q2->where('subject_type', WorldMapSprite::class)
+                        ->whereIn(
+                            'subject_id',
+                            WorldMapSprite::query()->select('id')->where('world_map_id', $mapId)
+                        );
+                });
+            });
+    }
+
+    /**
      * Базовый запрос журнала одной биографии (без сортировки и пагинации).
+     *
+     * События и линии таймлайна подключаются подзапросами по FK, без pluck в PHP.
      *
      * @param  World  $world  Мир
      * @param  Biography  $biography  Биография
@@ -891,26 +973,24 @@ class ActivityLogController extends Controller
                         ->where('subject_id', $bioId);
                 })->orWhere(function ($q2) use ($bioId) {
                     $q2->where('subject_type', BiographyEvent::class)
-                        ->whereExists(function ($sub) use ($bioId) {
-                            $sub->selectRaw('1')
-                                ->from('biography_events')
-                                ->whereColumn('biography_events.id', 'activity_logs.subject_id')
-                                ->where('biography_events.biography_id', $bioId);
-                        });
+                        ->whereIn(
+                            'subject_id',
+                            BiographyEvent::query()->select('id')->where('biography_id', $bioId)
+                        );
                 })->orWhere(function ($q2) use ($bioId) {
                     $q2->where('subject_type', TimelineLine::class)
-                        ->whereExists(function ($sub) use ($bioId) {
-                            $sub->selectRaw('1')
-                                ->from('timeline_lines')
-                                ->whereColumn('timeline_lines.id', 'activity_logs.subject_id')
-                                ->where('timeline_lines.source_biography_id', $bioId);
-                        });
+                        ->whereIn(
+                            'subject_id',
+                            TimelineLine::query()->select('id')->where('source_biography_id', $bioId)
+                        );
                 });
             });
     }
 
     /**
      * Базовый запрос журнала одной фракции.
+     *
+     * События и линии — подзапросы по `faction_id` / `source_faction_id`.
      *
      * @param  World  $world  Мир
      * @param  Faction  $faction  Фракция
@@ -928,26 +1008,24 @@ class ActivityLogController extends Controller
                         ->where('subject_id', $factionId);
                 })->orWhere(function ($q2) use ($factionId) {
                     $q2->where('subject_type', FactionEvent::class)
-                        ->whereExists(function ($sub) use ($factionId) {
-                            $sub->selectRaw('1')
-                                ->from('faction_events')
-                                ->whereColumn('faction_events.id', 'activity_logs.subject_id')
-                                ->where('faction_events.faction_id', $factionId);
-                        });
+                        ->whereIn(
+                            'subject_id',
+                            FactionEvent::query()->select('id')->where('faction_id', $factionId)
+                        );
                 })->orWhere(function ($q2) use ($factionId) {
                     $q2->where('subject_type', TimelineLine::class)
-                        ->whereExists(function ($sub) use ($factionId) {
-                            $sub->selectRaw('1')
-                                ->from('timeline_lines')
-                                ->whereColumn('timeline_lines.id', 'activity_logs.subject_id')
-                                ->where('timeline_lines.source_faction_id', $factionId);
-                        });
+                        ->whereIn(
+                            'subject_id',
+                            TimelineLine::query()->select('id')->where('source_faction_id', $factionId)
+                        );
                 });
             });
     }
 
     /**
      * Базовый запрос журнала доски связей.
+     *
+     * Узлы и рёбра — подзапросы по `connection_board_id`.
      *
      * @param  World  $world  Мир
      * @param  ConnectionBoard  $connectionBoard  Доска
@@ -965,20 +1043,16 @@ class ActivityLogController extends Controller
                         ->where('subject_id', $boardId);
                 })->orWhere(function ($q2) use ($boardId) {
                     $q2->where('subject_type', ConnectionBoardNode::class)
-                        ->whereExists(function ($sub) use ($boardId) {
-                            $sub->selectRaw('1')
-                                ->from('connection_board_nodes')
-                                ->whereColumn('connection_board_nodes.id', 'activity_logs.subject_id')
-                                ->where('connection_board_nodes.connection_board_id', $boardId);
-                        });
+                        ->whereIn(
+                            'subject_id',
+                            ConnectionBoardNode::query()->select('id')->where('connection_board_id', $boardId)
+                        );
                 })->orWhere(function ($q2) use ($boardId) {
                     $q2->where('subject_type', ConnectionBoardEdge::class)
-                        ->whereExists(function ($sub) use ($boardId) {
-                            $sub->selectRaw('1')
-                                ->from('connection_board_edges')
-                                ->whereColumn('connection_board_edges.id', 'activity_logs.subject_id')
-                                ->where('connection_board_edges.connection_board_id', $boardId);
-                        });
+                        ->whereIn(
+                            'subject_id',
+                            ConnectionBoardEdge::query()->select('id')->where('connection_board_id', $boardId)
+                        );
                 });
             });
     }

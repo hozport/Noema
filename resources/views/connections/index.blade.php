@@ -24,23 +24,29 @@
     @include('site.partials.header')
 
     <main class="flex-1 p-6 max-w-[1344px] w-full mx-auto">
-        <div class="mb-8 flex flex-wrap items-center justify-between gap-4">
-            <h1 class="text-[1.875rem] font-semibold text-base-content leading-tight min-w-0" style="font-family: 'Cormorant Garamond', Georgia, serif;">Связи</h1>
-            <div class="flex items-center gap-1 shrink-0">
+        <x-noema-page-head>
+            <x-slot name="title">
+                <h1 class="text-[1.875rem] font-semibold text-base-content leading-tight min-w-0" style="font-family: 'Cormorant Garamond', Georgia, serif;">Связи</h1>
+            </x-slot>
+            <x-slot name="center">
+                <button type="button" class="btn btn-primary btn-sm btn-square shrink-0 rounded-none" onclick="document.getElementById('addConnectionBoardModal').showModal()" title="Новая доска" aria-label="Новая доска">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+                    </svg>
+                </button>
+            </x-slot>
+            <x-slot name="actions">
                 <a href="{{ route('worlds.dashboard', $world) }}" class="btn btn-ghost btn-square" title="Назад в дашборд" aria-label="Назад в дашборд">
                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                         <path d="M19 12H5M12 19l-7-7 7-7"/>
                     </svg>
                 </a>
-                <button type="button" class="btn btn-ghost btn-square" onclick="document.getElementById('addConnectionBoardModal').showModal()" title="Новая доска" aria-label="Новая доска">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                        <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
-                    </svg>
-                </button>
                 @include('partials.activity-log-button', ['world' => $world, 'connectionsModuleJournal' => true])
-            </div>
-        </div>
-        <p class="text-base-content/60 mb-6 max-w-2xl">{{ $world->name }} — доски для связей между сущностями мира (как на детективной стене).</p>
+            </x-slot>
+            <x-slot name="below">
+                <p class="text-base-content/60 mb-6 max-w-2xl">{{ $world->name }} — доски для связей между сущностями мира (как на детективной стене).</p>
+            </x-slot>
+        </x-noema-page-head>
 
         @if (session('success'))
             <p class="text-success mb-4" role="alert" data-auto-dismiss>{{ session('success') }}</p>

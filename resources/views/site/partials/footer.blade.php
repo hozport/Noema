@@ -25,6 +25,7 @@
                     </h2>
                     <ul class="flex flex-col gap-2 text-sm text-base-content/80">
                         <li><a href="{{ route('site.svg-viewer') }}" class="hover:text-base-content transition-colors">{{ __('site.nav.svg_viewer') }}</a></li>
+                        <li><a href="{{ route('site.color-tool') }}" class="hover:text-base-content transition-colors">{{ __('site.nav.color_tool') }}</a></li>
                     </ul>
                 </nav>
             </div>

@@ -56,4 +56,12 @@ class SiteController extends Controller
     {
         return view('site.svg-viewer');
     }
+
+    /**
+     * Инструмент конвертации и подбора цветов (CSS: HEX, RGB, HSL).
+     */
+    public function colorTool(): View
+    {
+        return view('site.color-tool');
+    }
 }

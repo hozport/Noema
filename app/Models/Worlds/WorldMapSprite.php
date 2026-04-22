@@ -14,7 +14,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class WorldMapSprite extends Model
 {
     protected $fillable = [
-        'world_id',
+        'world_map_id',
         'sprite_path',
         'pos_x',
         'pos_y',
@@ -30,9 +30,12 @@ class WorldMapSprite extends Model
         ];
     }
 
-    public function world(): BelongsTo
+    /**
+     * Карта, на которой размещён объект.
+     */
+    public function worldMap(): BelongsTo
     {
-        return $this->belongsTo(World::class);
+        return $this->belongsTo(WorldMap::class, 'world_map_id');
     }
 
     /**

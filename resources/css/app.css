@@ -12,6 +12,19 @@
     --font-display: 'Cormorant Garamond', ui-serif, Georgia, serif;
 }
 
+/* Палитра заливки карты мира (свотчи и FILL_PALETTE в maps.js) */
+:root {
+    --noema-earth: #d4c5b5;
+    --noema-grass: #b8c4a8;
+    --noema-water: #a8b8c4;
+    --noema-deep-sea: #8a9ca8;
+    --noema-ice: #e0e4e8;
+    --noema-forest: #9ca88e;
+    --noema-desert: #e0d4c0;
+    --noema-mountain: #c4b8a8;
+    --noema-swamp: #a8b0a0;
+}
+
 /* Кнопки: большой паддинг, без скругления углов */
 .btn-action {
     padding: 1.25rem 3rem !important;
@@ -115,4 +128,107 @@
     #flash-toast-stack > .flash-toast {
         transition-duration: 0.01ms;
     }
+}
+
+/*
+ * Поля форм (DaisyUI): вместо outline 2px + offset — рамка 1px и лёгкое осветление фокуса.
+ * Переопределение вне @layer, чтобы перебить daisyui utilities.
+ */
+.input:not(.input-ghost),
+.textarea:not(.textarea-ghost),
+.select:not(.select-ghost),
+.file-input:not(.file-input-ghost) {
+    border-width: 1px !important;
+    border-style: solid !important;
+    box-shadow: none !important;
+    border-color: color-mix(in oklab, var(--color-base-content) 16%, transparent) !important;
+    transition:
+        border-color 0.15s ease,
+        box-shadow 0.15s ease,
+        background-color 0.15s ease;
+}
+
+.input:not(.input-ghost):focus,
+.input:not(.input-ghost):focus-within,
+.textarea:not(.textarea-ghost):focus,
+.textarea:not(.textarea-ghost):focus-within,
+.select:not(.select-ghost):focus,
+.select:not(.select-ghost):focus-within,
+.file-input:not(.file-input-ghost):focus,
+.file-input:not(.file-input-ghost):focus-within {
+    outline: none !important;
+    outline-offset: 0 !important;
+    box-shadow: inset 0 0 0 9999px color-mix(in oklab, white 5%, transparent) !important;
+    border-color: color-mix(in oklab, var(--color-base-content) 30%, transparent) !important;
+}
+
+.input.input-error:focus,
+.input.input-error:focus-within,
+.textarea.textarea-error:focus,
+.textarea.textarea-error:focus-within,
+.select.select-error:focus,
+.select.select-error:focus-within,
+.file-input.file-input-error:focus,
+.file-input.file-input-error:focus-within {
+    box-shadow: inset 0 0 0 9999px color-mix(in oklab, var(--color-error) 12%, transparent) !important;
+    border-color: var(--color-error) !important;
+}
+
+/* Модалки «Настройки» Noema: единая ширина и высота вьюпорта */
+.noema-settings-modal-box {
+    width: min(50vw, calc(100vw - 2rem)) !important;
+    max-width: min(50vw, calc(100vw - 2rem)) !important;
+    height: min(90vh, calc(100dvh - 2rem)) !important;
+    min-height: min(90vh, calc(100dvh - 2rem)) !important;
+    max-height: min(90vh, calc(100dvh - 2rem)) !important;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden !important;
+}
+
+/*
+ * DaisyUI: .modal-middle .modal-box задаёт height:auto, max-height:calc(100vh - 5em), overflow-y:auto
+ * (специфичнее одного класса на .modal-box). Перебиваем явно для настроек.
+ */
+dialog.modal .modal-box.noema-settings-modal-box {
+    height: min(90vh, calc(100dvh - 2rem)) !important;
+    min-height: min(90vh, calc(100dvh - 2rem)) !important;
+    max-height: min(90vh, calc(100dvh - 2rem)) !important;
+    overflow: hidden !important;
+}
+
+.noema-settings-modal-inner {
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+.noema-settings-modal-inner > :not(form) {
+    flex-shrink: 0;
+}
+
+.noema-settings-modal-inner > form:not(.hidden):not([aria-hidden='true']) {
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Основная область полей забирает почти всё место при переполнении; «хвост» — лёгкое растягивание под кнопками */
+.noema-settings-modal-body {
+    flex: 999 1 0;
+    min-height: 0;
+    overflow-y: auto;
+}
+
+.noema-settings-modal-inner > form:not(.hidden):not([aria-hidden='true']) > .modal-action,
+.noema-settings-modal-inner > form:not(.hidden):not([aria-hidden='true']) > .noema-settings-modal-footer {
+    flex-shrink: 0;
+}
+
+.noema-settings-modal-grow {
+    flex: 1 1 0;
+    min-height: 0;
+    pointer-events: none;
 }

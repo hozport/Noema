@@ -90,23 +90,29 @@
     @include('site.partials.header')
 
     <main class="flex-1 p-6 max-w-[1344px] w-full mx-auto">
-        <div class="mb-8 space-y-4">
-            <div class="flex flex-wrap items-center justify-between gap-4">
+        <x-noema-page-head>
+            <x-slot name="title">
                 <h1 class="text-[1.875rem] font-semibold text-base-content leading-tight min-w-0" style="font-family: 'Cormorant Garamond', Georgia, serif;">Карточки</h1>
-                <div class="flex items-center gap-1 shrink-0">
-                    <a href="{{ route('worlds.dashboard', $world) }}" class="btn btn-ghost btn-square" title="Назад в дашборд" aria-label="Назад в дашборд">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                            <path d="M19 12H5M12 19l-7-7 7-7"/>
-                        </svg>
-                    </a>
-                    <button type="button" class="btn btn-ghost btn-square" onclick="document.getElementById('addStoryModal').showModal()" title="Новая история" aria-label="Новая история">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                            <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
-                        </svg>
-                    </button>
-                    @include('partials.activity-log-button', ['world' => $world, 'cardsModuleJournal' => true])
-                </div>
-            </div>
+            </x-slot>
+            <x-slot name="center">
+                <button type="button" class="btn btn-primary btn-sm btn-square shrink-0 rounded-none" onclick="document.getElementById('addStoryModal').showModal()" title="Новая история" aria-label="Новая история">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+                    </svg>
+                </button>
+            </x-slot>
+            <x-slot name="actions">
+                <a href="{{ route('worlds.dashboard', $world) }}" class="btn btn-ghost btn-square" title="Назад в дашборд" aria-label="Назад в дашборд">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="M19 12H5M12 19l-7-7 7-7"/>
+                    </svg>
+                </a>
+                @include('partials.activity-log-button', ['world' => $world, 'cardsModuleJournal' => true])
+            </x-slot>
+        </x-noema-page-head>
+
+        {{-- Не внутри верхней строки: фильтр и уведомления — отдельный блок на 15px ниже шапки --}}
+        <div class="mt-[15px] mb-8 space-y-[15px]">
             @if (session('success'))
                 <p class="text-success" role="alert" data-auto-dismiss>{{ session('success') }}</p>
             @endif

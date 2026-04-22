@@ -29,7 +29,6 @@
         }
         dialog.world-settings-dialog[open]::backdrop { background: rgba(0,0,0,0.6); }
         dialog.world-settings-dialog[open] .modal-backdrop { position: absolute !important; inset: 0 !important; z-index: -1 !important; }
-        .world-settings-dialog .modal-box { max-width: 32rem; width: 100%; }
         dialog.delete-world-dashboard-dialog:not([open]) { display: none !important; }
         dialog.delete-world-dashboard-dialog[open] {
             position: fixed !important; top: 0 !important; left: 0 !important; right: 0 !important; bottom: 0 !important;
@@ -38,6 +37,13 @@
             z-index: 1000 !important; overflow-y: auto !important;
         }
         dialog.delete-world-dashboard-dialog[open]::backdrop { background: rgba(0,0,0,0.6); }
+        /* Аннотация: на всю ширину шапки, без дополнительного левого отступа внутри слота below */
+        .dashboard-page-head > .min-w-0.mt-1 {
+            margin-left: 0;
+            padding-left: 0;
+            width: 100%;
+            max-width: none;
+        }
     </style>
 </head>
 <body class="min-h-screen bg-base-100 flex flex-col">
@@ -50,15 +56,14 @@
             </div>
         @endif
 
-        {{-- Заголовок: название мира слева; справа: Назад к мирам, PDF, настройки --}}
-        <div class="flex items-start justify-between mb-6 gap-4">
-            <div class="min-w-0 flex-1">
+        <x-noema-page-head wrapperClass="mt-[15px] mb-16 w-full" class="dashboard-page-head w-full">
+            <x-slot name="title">
                 <h1 class="text-[1.875rem] font-semibold text-base-content leading-tight" style="font-family: 'Cormorant Garamond', Georgia, serif;">{{ $world->name }}</h1>
-                @if ($world->annotation)
-                    <p class="text-base-content/70 mt-2 max-w-2xl">{{ $world->annotation }}</p>
-                @endif
-            </div>
-            <div class="flex flex-wrap items-center gap-1 shrink-0 mt-0.5 justify-end">
+            </x-slot>
+            <x-slot name="below">
+                <p class="text-base-content/70 w-full max-w-none min-w-0 m-0 p-0 text-left whitespace-pre-line">{{ trim((string) ($world->annotation ?? '')) !== '' ? trim($world->annotation) : 'Здесь могла быть ваша аннотация.' }}</p>
+            </x-slot>
+            <x-slot name="actions">
                 <a href="{{ route('worlds.index') }}" class="btn btn-ghost btn-square shrink-0" title="Назад к мирам" aria-label="Назад к мирам">
                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                         <path d="M19 12H5M12 19l-7-7 7-7"/>
@@ -71,7 +76,7 @@
                         <line x1="12" y1="15" x2="12" y2="3"/>
                     </svg>
                 </button>
-                <button type="button" class="btn btn-ghost btn-square shrink-0" title="Настройки мира" aria-label="Настройки мира" onclick="document.getElementById('worldSettingsModal').showModal()">
+                <button type="button" class="btn btn-ghost btn-square shrink-0" title="Настройки" aria-label="Настройки" onclick="document.getElementById('worldSettingsModal').showModal()">
                     <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                         <circle cx="12" cy="12" r="3"/>
                         <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
@@ -83,8 +88,8 @@
                     </svg>
                 </button>
                 @include('partials.activity-log-button', ['world' => $world])
-            </div>
-        </div>
+            </x-slot>
+        </x-noema-page-head>
 
         {{-- Блок 1: История --}}
         <section class="mb-12">
@@ -120,10 +125,10 @@
         </section>
 
         {{-- Блок 2: Энциклопедия --}}
-        <section>
+        <section class="pb-16 md:pb-24">
             <h2 class="text-xl font-medium text-base-content/80 mb-4">Энциклопедия</h2>
             <div class="card-block-container">
-                <a href="{{ route('worlds.maps', $world) }}" class="card card-block bg-base-200 border border-base-300 hover:border-primary/30 transition-colors dashboard-card p-6">
+                <a href="{{ route('worlds.maps.index', $world) }}" class="card card-block bg-base-200 border border-base-300 hover:border-primary/30 transition-colors dashboard-card p-6">
                     <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
                         <polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"/>
                         <line x1="8" y1="2" x2="8" y2="18"/>
@@ -181,12 +186,13 @@
     </dialog>
 
     <dialog id="worldSettingsModal" class="modal modal-middle world-settings-dialog">
-        <div class="modal-box rounded-none border border-base-300 bg-base-200 shadow-2xl p-6 md:p-8">
-            <h2 class="font-display text-xl font-semibold text-base-content mb-1">Настройки мира</h2>
-            <p class="text-sm text-base-content/60 mb-6">{{ $world->name }}</p>
-            <form method="POST" action="{{ route('worlds.update', $world) }}" enctype="multipart/form-data" class="space-y-4" id="worldSettingsForm">
+        <div class="modal-box noema-settings-modal-box rounded-none border border-base-300 bg-base-200 shadow-2xl p-6 md:p-8">
+            <div class="noema-settings-modal-inner">
+                <h2 class="font-display text-xl font-semibold text-base-content mb-6">Настройки</h2>
+                <form method="POST" action="{{ route('worlds.update', $world) }}" enctype="multipart/form-data" class="min-h-0" id="worldSettingsForm">
                 @csrf
                 @method('PUT')
+                <div class="noema-settings-modal-body space-y-4">
                 <div class="form-control w-full">
                     <label class="label py-1" for="world-settings-name"><span class="label-text">Название</span></label>
                     <input type="text" id="world-settings-name" name="name" value="{{ old('name', $world->name) }}" required maxlength="255"
@@ -199,7 +205,9 @@
                     <label class="label py-1" for="world-settings-annotation"><span class="label-text">Описание</span></label>
                     <textarea id="world-settings-annotation" name="annotation" rows="4" maxlength="1000"
                         class="textarea textarea-bordered w-full rounded-none bg-base-100 border-base-300 min-h-[6rem] @error('annotation') textarea-error @enderror"
-                        placeholder="Краткий синопсис или описание мира">{{ old('annotation', $world->annotation) }}</textarea>
+                        placeholder="Краткий синопсис или описание мира"
+                        aria-describedby="world-settings-annotation-counter">{{ old('annotation', $world->annotation) }}</textarea>
+                    <p id="world-settings-annotation-counter" class="text-xs text-right mt-1 tabular-nums" aria-live="polite"></p>
                     @error('annotation')
                         <p class="text-error text-sm mt-1">{{ $message }}</p>
                     @enderror
@@ -214,56 +222,62 @@
                             </option>
                         @endforeach
                     </select>
-                    <p class="text-xs text-base-content/50 mt-1">Влияет на стилистику интерфейса карты и подписей (в перспективе — и других модулей).</p>
                     @error('setting')
                         <p class="text-error text-sm mt-1">{{ $message }}</p>
                     @enderror
                 </div>
-                <div class="form-control w-full">
-                    <label class="label py-1" for="world-settings-reference"><span class="label-text">Точка отсчёта</span></label>
-                    <input type="text" id="world-settings-reference" name="reference_point" value="{{ old('reference_point', $world->reference_point) }}" maxlength="255"
-                        class="input input-bordered w-full rounded-none bg-base-100 border-base-300 @error('reference_point') input-error @enderror"
-                        placeholder="Например, метка нуля на таймлайне">
-                    <p class="text-xs text-base-content/50 mt-1">Отображается на шкале времени и в связанных подсказках.</p>
-                    @error('reference_point')
-                        <p class="text-error text-sm mt-1">{{ $message }}</p>
-                    @enderror
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full">
+                    <div class="form-control w-full min-w-0">
+                        <label class="label py-1" for="world-settings-reference"><span class="label-text">Точка отсчёта</span></label>
+                        <input type="text" id="world-settings-reference" name="reference_point" value="{{ old('reference_point', $world->reference_point) }}" maxlength="255"
+                            class="input input-bordered w-full rounded-none bg-base-100 border-base-300 @error('reference_point') input-error @enderror"
+                            placeholder="Например, метка нуля на таймлайне">
+                        @error('reference_point')
+                            <p class="text-error text-sm mt-1">{{ $message }}</p>
+                        @enderror
+                    </div>
+                    <div class="form-control w-full min-w-0">
+                        <label class="label py-1" for="world-settings-timeline-max-year"><span class="label-text">Ограничить таймлайн</span></label>
+                        <input type="number" id="world-settings-timeline-max-year" name="timeline_max_year" value="{{ old('timeline_max_year', $world->timeline_max_year) }}" min="0"
+                            class="input input-bordered w-full rounded-none bg-base-100 border-base-300 @error('timeline_max_year') input-error @enderror"
+                            placeholder="Последний год на шкале (пусто — без ограничения)">
+                        @error('timeline_max_year')
+                            <p class="text-error text-sm mt-1">{{ $message }}</p>
+                        @enderror
+                    </div>
                 </div>
                 <div class="form-control w-full">
-                    <label class="label py-1" for="world-settings-timeline-max-year"><span class="label-text">Ограничить таймлайн</span></label>
-                    <input type="number" id="world-settings-timeline-max-year" name="timeline_max_year" value="{{ old('timeline_max_year', $world->timeline_max_year) }}" min="0"
-                        class="input input-bordered w-full rounded-none bg-base-100 border-base-300 @error('timeline_max_year') input-error @enderror"
-                        placeholder="Последний год на шкале (пусто — без ограничения)">
-                    <p class="text-xs text-base-content/50 mt-1">Правая граница шкалы на холсте совпадает с этим годом (можно задать дальше последних событий — будет пустое место справа; меньше максимума данных — шкала обрежется).</p>
-                    @error('timeline_max_year')
-                        <p class="text-error text-sm mt-1">{{ $message }}</p>
-                    @enderror
-                </div>
-                <div class="form-control w-full">
-                    <span class="label-text block mb-2">Изображение мира</span>
-                    @if ($world->imageUrl())
-                        <div class="mb-3 flex items-start gap-4">
-                            <div class="border border-base-300 bg-base-300/20 overflow-hidden shrink-0 inline-flex max-w-[200px] max-h-[200px] items-center justify-center">
-                                <img src="{{ $world->imageUrl() }}" alt="" class="max-w-[200px] max-h-[200px] w-auto h-auto object-contain block" id="worldSettingsCurrentImg">
+                    <label class="label py-1" for="world-settings-image"><span class="label-text">Изображение мира</span></label>
+                    <div class="flex flex-row gap-3 items-start w-full">
+                        @if ($world->imageUrl())
+                            <div class="border border-base-300 bg-base-300/20 overflow-hidden shrink-0 w-24 h-24 flex items-center justify-center">
+                                <img src="{{ $world->imageUrl() }}" alt="" class="max-w-full max-h-full w-auto h-auto object-contain block" id="worldSettingsCurrentImg">
                             </div>
-                            <label class="label cursor-pointer justify-start gap-2 py-0">
-                                <input type="checkbox" name="remove_image" value="1" class="checkbox checkbox-sm rounded-none border-base-300" @checked(old('remove_image'))>
-                                <span class="label-text text-sm">Удалить текущее изображение</span>
-                            </label>
+                        @endif
+                        <div class="flex-1 min-w-0 flex flex-col gap-2">
+                            @if ($world->imageUrl())
+                                <label class="label cursor-pointer justify-start items-center gap-2 py-0 min-h-0 self-start">
+                                    <input type="checkbox" name="remove_image" value="1" class="checkbox checkbox-sm rounded-none border-base-300 shrink-0" @checked(old('remove_image'))>
+                                    <span class="label-text text-sm leading-snug">Удалить изображение</span>
+                                </label>
+                            @endif
+                            <input type="file" id="world-settings-image" name="image" accept="image/*"
+                                class="file-input file-input-bordered w-full rounded-none bg-base-100 border-base-300 @error('image') file-input-error @enderror">
+                            @error('image')
+                                <p class="text-error text-sm">{{ $message }}</p>
+                            @enderror
+                            <p class="text-xs text-base-content/50 leading-snug">PNG, JPG или WebP, до 2 МБ. Новый файл заменит текущий.</p>
                         </div>
-                    @endif
-                    <input type="file" id="world-settings-image" name="image" accept="image/*"
-                        class="file-input file-input-bordered w-full rounded-none bg-base-100 border-base-300 @error('image') file-input-error @enderror">
-                    @error('image')
-                        <p class="text-error text-sm mt-1">{{ $message }}</p>
-                    @enderror
-                    <p class="text-xs text-base-content/50 mt-1">PNG, JPG или WebP, до 2 МБ. Новый файл заменит текущий.</p>
+                    </div>
+                </div>
                 </div>
                 <div class="modal-action flex flex-wrap gap-2 justify-end pt-4">
                     <button type="button" class="btn btn-ghost rounded-none" onclick="document.getElementById('worldSettingsModal').close()">Отмена</button>
                     <button type="submit" class="btn btn-primary rounded-none">Сохранить</button>
                 </div>
+                <div class="noema-settings-modal-grow" aria-hidden="true"></div>
             </form>
+            </div>
         </div>
         <form method="dialog" class="modal-backdrop"><button type="submit" class="cursor-default opacity-0 absolute inset-0 w-full h-full" aria-label="Закрыть">close</button></form>
     </dialog>
@@ -281,6 +295,27 @@
                 if (!f || !f.type.startsWith('image/') || !currentImg) return;
                 currentImg.src = URL.createObjectURL(f);
             });
+
+            const annTa = document.getElementById('world-settings-annotation');
+            const annCounter = document.getElementById('world-settings-annotation-counter');
+            if (annTa && annCounter) {
+                const max = 1000;
+                const soft = 800;
+                function syncWorldAnnotationCounter() {
+                    const len = annTa.value.length;
+                    annCounter.textContent = `${len} / ${max}`;
+                    annCounter.classList.remove('text-warning', 'text-error', 'text-base-content/50');
+                    if (len > max) {
+                        annCounter.classList.add('text-error');
+                    } else if (len >= soft) {
+                        annCounter.classList.add('text-warning');
+                    } else {
+                        annCounter.classList.add('text-base-content/50');
+                    }
+                }
+                annTa.addEventListener('input', syncWorldAnnotationCounter);
+                syncWorldAnnotationCounter();
+            }
 
             const delModal = document.getElementById('deleteWorldFromDashboardModal');
             const delInput = document.getElementById('delete-world-dashboard-confirm');

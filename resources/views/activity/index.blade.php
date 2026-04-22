@@ -17,6 +17,7 @@
         'connections_module' => 'Журнал — связи — '.$world->name,
         'connection_board' => 'Журнал — '.$connectionBoard->name,
         'maps_module' => 'Журнал — карты — '.$world->name,
+        'world_map' => 'Журнал — карта — '.$map->title.' — '.$world->name,
         default => 'Журнал — '.$world->name,
     };
     $logTableColspan = $scope === 'account' ? 4 : 3;
@@ -36,6 +37,7 @@
         'connections_module' => route('connections.module.activity.clear', $world),
         'connection_board' => route('connections.board.activity.clear', [$world, $connectionBoard]),
         'maps_module' => route('maps.module.activity.clear', $world),
+        'world_map' => route('worlds.maps.activity.clear', [$world, $map]),
         default => null,
     };
 @endphp
@@ -46,9 +48,9 @@
     @if (session('success'))
         <p class="text-success mb-4" role="alert" data-auto-dismiss>{{ session('success') }}</p>
     @endif
-    <div class="flex flex-wrap items-start justify-between gap-4 mb-8">
-        <div class="min-w-0">
-            <h1 class="font-display text-3xl md:text-4xl text-base-content font-semibold tracking-tight mb-2">
+    <x-noema-page-head>
+        <x-slot name="title">
+            <h1 class="font-display text-3xl md:text-4xl text-base-content font-semibold tracking-tight">
                 @if ($scope === 'account')
                     Общий журнал
                 @elseif ($scope === 'world')
@@ -79,10 +81,14 @@
                     Журнал доски
                 @elseif ($scope === 'maps_module')
                     Журнал карты мира
+                @elseif ($scope === 'world_map')
+                    Журнал этой карты
                 @else
                     Журнал изменений
                 @endif
             </h1>
+        </x-slot>
+        <x-slot name="below">
             @if ($scope === 'world')
                 <p class="text-base-content/70 text-sm md:text-base">
                     Мир <span class="text-base-content font-medium">{{ $world->name }}</span> — все сохранённые действия в этом мире.
@@ -139,14 +145,17 @@
                 <p class="text-base-content/70 text-sm md:text-base">
                     Мир <span class="text-base-content font-medium">{{ $world->name }}</span> — только действия с картой (объекты на карте).
                 </p>
+            @elseif ($scope === 'world_map')
+                <p class="text-base-content/70 text-sm md:text-base">
+                    Карта <span class="text-base-content font-medium">{{ $map->title }}</span> — настройки холста, линии, заливка и объекты только на этой карте.
+                </p>
             @else
                 <p class="text-base-content/70 text-sm md:text-base">
                     Все события по вашему аккаунту во всех мирах и модулях, где ведётся журнал.
                 </p>
             @endif
-        </div>
-        <div class="flex flex-wrap items-center gap-2 justify-end shrink-0">
-            <div class="flex items-center gap-2">
+        </x-slot>
+        <x-slot name="actions">
                 @if ($scope === 'world')
                     <a href="{{ route('worlds.dashboard', $world) }}" class="btn btn-ghost btn-square rounded-none" title="Назад в дашборд" aria-label="Назад в дашборд">
                         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -226,7 +235,13 @@
                         </svg>
                     </a>
                 @elseif ($scope === 'maps_module')
-                    <a href="{{ route('worlds.maps', $world) }}" class="btn btn-ghost btn-square rounded-none" title="Назад к карте" aria-label="Назад к карте">
+                    <a href="{{ route('worlds.maps.index', $world) }}" class="btn btn-ghost btn-square rounded-none" title="Назад к картам" aria-label="Назад к картам">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <path d="M19 12H5M12 19l-7-7 7-7"/>
+                        </svg>
+                    </a>
+                @elseif ($scope === 'world_map')
+                    <a href="{{ route('worlds.maps.show', [$world, $map]) }}" class="btn btn-ghost btn-square rounded-none" title="Назад к редактору карты" aria-label="Назад к редактору карты">
                         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                             <path d="M19 12H5M12 19l-7-7 7-7"/>
                         </svg>
@@ -249,9 +264,8 @@
                         </button>
                     </form>
                 @endif
-            </div>
-        </div>
-    </div>
+        </x-slot>
+    </x-noema-page-head>
 
     <div class="overflow-x-auto border border-base-300 bg-base-200/40 rounded-none">
         <table class="table table-zebra w-full">

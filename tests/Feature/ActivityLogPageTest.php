@@ -231,4 +231,38 @@ class ActivityLogPageTest extends TestCase
         $response->assertSee('Событие А', false);
         $response->assertDontSee('Событие Б', false);
     }
+
+    public function test_clear_story_removes_logs_for_story_and_its_cards_only(): void
+    {
+        $user = User::factory()->create();
+        $world = World::query()->create([
+            'user_id' => $user->id,
+            'name' => 'Мир W',
+            'onoff' => true,
+        ]);
+        $story = Story::query()->create([
+            'world_id' => $world->id,
+            'name' => 'История',
+        ]);
+        $card = Card::query()->create([
+            'story_id' => $story->id,
+            'title' => 'К1',
+            'number' => 1,
+            'content' => null,
+        ]);
+
+        ActivityLog::record($user, $world, 'story.updated', 'По истории', $story);
+        ActivityLog::record($user, $world, 'card.updated', 'По карточке', $card);
+        ActivityLog::record($user, $world, 'world.updated', 'По миру', $world);
+
+        $this->assertSame(3, ActivityLog::query()->where('world_id', $world->id)->count());
+
+        $this->actingAs($user)
+            ->from(route('cards.stories.activity', [$world, $story]))
+            ->delete(route('cards.stories.activity.clear', [$world, $story]))
+            ->assertRedirect(route('cards.stories.activity', [$world, $story]));
+
+        $this->assertSame(1, ActivityLog::query()->where('world_id', $world->id)->count());
+        $this->assertSame('world.updated', ActivityLog::query()->where('world_id', $world->id)->value('action'));
+    }
 }

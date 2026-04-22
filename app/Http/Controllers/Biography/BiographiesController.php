@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Biography;
 use App\Http\Controllers\Controller;
 use App\Models\Worlds\World;
 use App\Support\BestiaryAlphabet;
+use App\Support\DatabaseDriver;
 use App\Support\FactionType;
 use Dompdf\Dompdf;
 use Dompdf\Options;
@@ -49,10 +50,18 @@ class BiographiesController extends Controller
         $searchQuery = $q === '' ? null : $q;
 
         if ($searchQuery !== null) {
-            $selectedBiographies = $biographies
-                ->filter(fn ($b) => mb_stripos($b->name, $searchQuery, 0, 'UTF-8') !== false)
-                ->sortBy(fn ($b) => mb_strtolower($b->name, 'UTF-8'))
-                ->values();
+            if (DatabaseDriver::defaultIsPostgres()) {
+                $selectedBiographies = $world->biographies()
+                    ->with('world.user')
+                    ->where('name', 'ilike', DatabaseDriver::likeContainsPattern($searchQuery))
+                    ->orderBy('name')
+                    ->get();
+            } else {
+                $selectedBiographies = $biographies
+                    ->filter(fn ($b) => mb_stripos($b->name, $searchQuery, 0, 'UTF-8') !== false)
+                    ->sortBy(fn ($b) => mb_strtolower($b->name, 'UTF-8'))
+                    ->values();
+            }
         } else {
             $selectedBiographies = $byLetter->get($letter, collect())->sortBy(
                 fn ($b) => mb_strtolower($b->name, 'UTF-8')

@@ -73,6 +73,7 @@ Route::middleware('auth')->group(function () {
         Route::put('/worlds-display', [WorldsListDisplayController::class, 'update'])->name('worlds-display.update');
         Route::get('/team', [TeamController::class, 'show'])->name('team');
         Route::get('/settings', [NoemaSettingsController::class, 'show'])->name('settings');
+        Route::put('/settings/maps-defaults', [NoemaSettingsController::class, 'updateMapsDefaults'])->name('settings.maps-defaults.update');
     });
 
     /*
@@ -129,16 +130,25 @@ Route::middleware('auth')->group(function () {
 
     /*
     |----------------------------------------------------------------------
-    | Модуль: карты мира (спрайты)
+    | Модуль: карты мира (несколько холстов на мир)
     |----------------------------------------------------------------------
     */
-    Route::get('/worlds/{world}/maps', [WorldMapsController::class, 'show'])->name('worlds.maps');
+    Route::get('/worlds/{world}/maps', [WorldMapsController::class, 'index'])->name('worlds.maps.index');
+    Route::put('/worlds/{world}/maps/settings', [WorldMapsController::class, 'updateModuleSettings'])->name('worlds.maps.settings.update');
+    Route::post('/worlds/{world}/maps', [WorldMapsController::class, 'store'])->name('worlds.maps.store');
     Route::get('/worlds/{world}/maps/activity', [ActivityLogController::class, 'mapsModule'])->name('maps.module.activity');
     Route::delete('/worlds/{world}/maps/activity', [ActivityLogController::class, 'clearMapsModule'])->name('maps.module.activity.clear');
-    Route::put('/worlds/{world}/maps/canvas', [WorldMapsController::class, 'updateCanvas'])->name('worlds.maps.canvas.update');
-    Route::post('/worlds/{world}/maps/sprites', [WorldMapsController::class, 'storeSprite'])->name('worlds.maps.sprites.store');
-    Route::put('/worlds/{world}/maps/sprites/{worldMapSprite}', [WorldMapsController::class, 'updateSprite'])->name('worlds.maps.sprites.update');
-    Route::delete('/worlds/{world}/maps/sprites/{worldMapSprite}', [WorldMapsController::class, 'destroySprite'])->name('worlds.maps.sprites.destroy');
+    Route::get('/worlds/{world}/maps/{map}', [WorldMapsController::class, 'show'])->name('worlds.maps.show')->scopeBindings();
+    Route::put('/worlds/{world}/maps/{map}', [WorldMapsController::class, 'update'])->name('worlds.maps.update')->scopeBindings();
+    Route::delete('/worlds/{world}/maps/{map}', [WorldMapsController::class, 'destroy'])->name('worlds.maps.destroy')->scopeBindings();
+    Route::put('/worlds/{world}/maps/{map}/canvas', [WorldMapsController::class, 'updateCanvas'])->name('worlds.maps.canvas.update')->scopeBindings();
+    Route::post('/worlds/{world}/maps/{map}/fill', [WorldMapsController::class, 'storeMapFill'])->name('worlds.maps.fill.store')->scopeBindings();
+    Route::get('/worlds/{world}/maps/{map}/fill.png', [WorldMapsController::class, 'showMapFillPng'])->name('worlds.maps.fill.show')->scopeBindings();
+    Route::post('/worlds/{world}/maps/{map}/sprites', [WorldMapsController::class, 'storeSprite'])->name('worlds.maps.sprites.store')->scopeBindings();
+    Route::put('/worlds/{world}/maps/{map}/sprites/{mapSprite}', [WorldMapsController::class, 'updateSprite'])->name('worlds.maps.sprites.update')->scopeBindings();
+    Route::delete('/worlds/{world}/maps/{map}/sprites/{mapSprite}', [WorldMapsController::class, 'destroySprite'])->name('worlds.maps.sprites.destroy')->scopeBindings();
+    Route::get('/worlds/{world}/maps/{map}/activity', [ActivityLogController::class, 'worldMapActivity'])->name('worlds.maps.activity')->scopeBindings();
+    Route::delete('/worlds/{world}/maps/{map}/activity', [ActivityLogController::class, 'clearWorldMapActivity'])->name('worlds.maps.activity.clear')->scopeBindings();
 
     /*
     |----------------------------------------------------------------------
